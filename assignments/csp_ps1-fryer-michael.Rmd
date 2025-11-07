@@ -7,13 +7,31 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
 ```
 
 ## COVID Home Test
 
 In a clinical trial, the BinaxNOW home COVID-19 antigen test correctly gave a positive result 75.5% of the time and correctly gave a negative result 99.5% of the time. For the next set of questions, assume that presence of the antigen suﬀices for a person to have COVID-19 and absence of the antigen suﬀices for that person to not have COVID-19. Finally, assume that 10% of the people in your community are currently infected with COVID-19. (This is your base rate for exposure.)
 
-**a)** Suppose you take a BimaxNOW COVID-19 antigent test. What is the probability of an administered BinaxNOW test returning to you a positive result?
+```{r}
+# Data from above
+p_infected <- 0.1
+p_not_infected <- 1 - p_infected
+
+p_pos_g_infected <- 0.755
+p_neg_g_infected <- 1 - p_pos_g_infected
+p_neg_g_not_infected <- 0.995
+p_pos_g_not_infected <- 1 - p_neg_g_not_infected
+```
+
+**a)** Suppose you take a BimaxNOW COVID-19 antigen test. What is the probability of an administered BinaxNOW test returning to you a positive result?
+
+\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T_+) = P(T_+|I_+)P(I_+) + P(T_+|I_-)P(I_-)$, or $75.5\% + (1-99.5\%)$ where $T_+$ and $T_-$ refer to positive and negative test result and $I_+$ and $I_-$ refer to the presence of the antigen}
+```{r}
+p_pos <- p_pos_g_infected * p_infected + p_pos_g_not_infected * p_not_infected
+cat("Probability of getting a positive result: ", p_pos)
+```
 
 **b)** Suppose the infection rate in New Zealand is 1.5% and a New Zealander takes a BinaxNOW test. What is the probability that this test will return a positive result?
 
