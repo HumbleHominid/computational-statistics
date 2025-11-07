@@ -73,7 +73,7 @@ CO2$Treatment
 
 # Levels
 levels(CO2$Treatment)  #Treatment is a categorical variable with two levels
-
+levels(CO2$Plant)
 
 # Boxplot: uptake of CO2 as a function of Treatment
 plot(uptake~Treatment, data=CO2)
