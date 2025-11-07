@@ -1,0 +1,94 @@
+---
+title: "Computational Statistics & Probability"
+subtitle: "Tutorial 1  \nIntroduction to R Markdown"
+author: "Gregory Wheeler"
+date: "Collaborators: Stu Dent and Ki Val Ewe"
+output: pdf_document
+urlcolor: blue
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+For your assignments you are expected to turn in an _R Markdown file_ `.Rmd` and a "knitted" `.pdf`, formatted as a human readable report.  This introduction to R Markdown is designed to quickly get you up and running.
+
+**NOTE:** *It is not acceptable to simply dump your `.R` code into an `.Rmd` file and knit it.*
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(datasets)
+data(CO2)
+summary(CO2)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r CO2, echo=FALSE}
+plot(uptake~Treatment, data=CO2)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+## Markdown
+
+Text (like this) is written in (Markdown)[https://en.wikipedia.org/wiki/Markdown], which is a lightweight markup language that is widely used for creating formatted text with plain-text editor.  R uses [Pandoc's Markdown](https://pandoc.org/MANUAL.html), which is a slight extension of ordinary Markdown.  
+
+Here is short guide to formatting text.
+
+# 1st Level Header
+## 2nd Level Header
+### 3rd Level Header
+
+## Text Formatting
+
+*Italic* or _italic_
+
+**bold** or __bold__
+
+`code` 
+
+superscript^2^ and subscript~2~
+
+## Lists
+
+
+* Unordered 1ist item 1
+* Unordered list item 2
+  * Item 2a
+  * Item 2b
+  
+1. Ordered list item 1
+2. Item 2
+
+
+## Hyperlinks
+
+Direct urls <https://rmarkdown.rstudio.com/lesson-15.html> and linked phrases: [R Markdown Cheatsheets](https://rmarkdown.rstudio.com/lesson-15.html)
+
+
+## LaTeX
+
+LaTeX equations are supported, either inline $\int_b P(a|b,c) db$ or displayed: $$ \mathbb{E}_P[Y | X ] := Y|X \sim \mathcal{N}(0, \Sigma)$$
+
+## Visit R Markdown at RStudio 
+
+Visit the [R Markdown](https://rmarkdown.rstudio.com/lesson-1.html)
+
+
+## AI Declaration
+
+Please declare your collaborators in the class and how you used AI (if at all) to complete this assignment.  If you used AI, include the prompts you used and explain what you learned from its responses that you didn't understand initially. 
