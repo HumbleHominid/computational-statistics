@@ -35,6 +35,17 @@ cat("Probability of getting a positive result: ", p_pos)
 
 **b)** Suppose the infection rate in New Zealand is 1.5% and a New Zealander takes a BinaxNOW test. What is the probability that this test will return a positive result?
 
+\textit{This is the same as above, however we use different values for our priors.}
+```{r}
+p_infected_nz <- 0.015
+p_not_infected_nz <- 1- p_infected_nz
+
+p_pos <- (
+  p_pos_g_infected * p_infected_nz + p_pos_g_not_infected * p_not_infected_nz
+)
+cat("Probability of getting a positive result (in New Zealand): ", p_pos)
+```
+
 **c)** A competitor offers a test with a sensitivity 90% but specificity 99.0% (vs BinaxNOW’s 99.5%).
 
 -   Calculate $P(C=1|T=1)$ for both tests.
@@ -88,7 +99,7 @@ What is the probability that a swing voter in the last election between Red, Blu
 Look back at problems 1 to 3. In each case, you updated beliefs based on observations:
 
 -   In problem 1, test result $\rightarrow$ disease status.
--   In problem 2, data $\rightarrow$ parameter value
+-   In problem 2, data $\rightarrow$ parameter value.
 -   In problem 3, past behavior $\rightarrow$ future behavior.
 
 Write a 3-4 sentence paragraph explaining what these three problems have in common from a Bayesian perspective. What role do priors play in each?
