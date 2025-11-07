@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
 ```
 
-## COVID Home Test
+## 1. COVID Home Test
 
 In a clinical trial, the BinaxNOW home COVID-19 antigen test correctly gave a positive result 75.5% of the time and correctly gave a negative result 99.5% of the time. For the next set of questions, assume that presence of the antigen suﬀices for a person to have COVID-19 and absence of the antigen suﬀices for that person to not have COVID-19. Finally, assume that 10% of the people in your community are currently infected with COVID-19. (This is your base rate for exposure.)
 
@@ -49,7 +49,7 @@ cat("Probability of getting a positive result: ", p_pos)
 -   Plot $P(C=1|T=1)$ vs base rate for both tests on the same graph.
 -   Write 2-3 sentences explaining at which base rates each test is preferable and why the preference changes (or doesn’t change).
 
-## Computing Probabilities
+## 2. Computing Probabilities
 
 Implement and run the following chunk of code to create a distribution, samples. Create a plot of that distribution. Then, where called for, write a short line of R code to compute an answer to each question. Analytical solutions will not be accepted.
 
@@ -71,7 +71,7 @@ samples <- sample( p_grid , prob=posterior , size=1e4, replace=TRUE )
 
 **d)** 20% of the posterior probability likes below which value of $p$?
 
-## Swing Voters
+## 3. Swing Voters
 
 Write your own R code chunks to answer the following questions. Analytical solutions will not suﬀice.
 
@@ -83,7 +83,7 @@ Smith was a swing voter in the last election but you do not know whether he is R
 
 What is the probability that a swing voter in the last election between Red, Blue, and Green, will be a swing voter in the next election? (Like before, nobody changes parties.) Explain your reasoning.
 
-## Reflection
+## 4. Reflection
 
 Look back at problems 1 to 3. In each case, you updated beliefs based on observations:
 
@@ -93,6 +93,6 @@ Look back at problems 1 to 3. In each case, you updated beliefs based on observa
 
 Write a 3-4 sentence paragraph explaining what these three problems have in common from a Bayesian perspective. What role do priors play in each?
 
-## AI Declaration
+## 5. AI Declaration
 
 Please declare your collaborators in the class and how you used AI (if at all) to complete this assignment. If you used AI, include the prompts you used and explain what you learned from its responses that you didn’t understand initially.
