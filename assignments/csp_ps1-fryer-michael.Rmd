@@ -17,48 +17,175 @@ In a clinical trial, the BinaxNOW home COVID-19 antigen test correctly gave a po
 ```{r}
 # Data from above
 p_infected <- 0.1
-p_not_infected <- 1 - p_infected
 
-p_pos_g_infected <- 0.755
-p_neg_g_infected <- 1 - p_pos_g_infected
-p_neg_g_not_infected <- 0.995
-p_pos_g_not_infected <- 1 - p_neg_g_not_infected
+sensitivity_binax <- 0.755
+specificity_binax <- 0.995
+```
+
+\textit{Let's prepare some helper functions we will use later.}
+```{r}
+bayes <- function(base_rate, sensitivity, specificity) {
+  p_evidence <- (sensitivity * base_rate) + ((1 - specificity) * (1 - base_rate))
+  return((sensitivity * base_rate) / p_evidence)
+}
 ```
 
 **a)** Suppose you take a BimaxNOW COVID-19 antigen test. What is the probability of an administered BinaxNOW test returning to you a positive result?
 
-\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = P(T=1|C=1)P(I=1) + P(T=1|C=0)P(C=0)$ where $T$ refers to the test result and $C$ refers to the presence of the antigen.}
+\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = P(T=1|C=1)P(C=1) + P(T=1|C=0)P(C=0)$ where $T$ refers to the test result and $C$ refers to the presence of the antigen.}
 ```{r}
-p_pos <- p_pos_g_infected * p_infected + p_pos_g_not_infected * p_not_infected
+p_pos <- (
+  sensitivity_binax * p_infected + (1 - specificity_binax) * (1 - p_infected)
+)
+```
+```{r, echo=FALSE}
 cat("Probability of getting a positive result: ", p_pos)
 ```
 
 **b)** Suppose the infection rate in New Zealand is 1.5% and a New Zealander takes a BinaxNOW test. What is the probability that this test will return a positive result?
 
-\textit{This is the same as above, however we use different values for our priors.}
+\textit{This is the same as above, however we use different values for our base rate.}
 ```{r}
 p_infected_nz <- 0.015
-p_not_infected_nz <- 1- p_infected_nz
 
 p_pos <- (
-  p_pos_g_infected * p_infected_nz + p_pos_g_not_infected * p_not_infected_nz
+  sensitivity_binax * p_infected_nz + (1 - specificity_binax) * (1 - p_infected_nz)
 )
+```
+```{r, echo=FALSE}
 cat("Probability of getting a positive result (in New Zealand): ", p_pos)
 ```
 
 **c)** A competitor offers a test with a sensitivity 90% but specificity 99.0% (vs BinaxNOW’s 99.5%).
 
 -   Calculate $P(C=1|T=1)$ for both tests.
+```{r}
+sensitivity_competitor <- .9
+specificity_competitor <- .99
+
+# BinaxNOW
+p_infected_g_pos_binax <- bayes(
+  p_infected, sensitivity_binax, specificity_binax
+)
+
+# Competitor
+p_infected_g_pos_c <- bayes(
+  p_infected, sensitivity_competitor, specificity_competitor
+)
+```
+```{r, echo=FALSE}
+cat("P(C=1|T=1):\n")
+cat("BinaxNow:   ", p_infected_g_pos_binax, "\n")
+cat("Competitor: ", p_infected_g_pos_c)
+```
+
 -   The competitor’s test costs 2x more. For which base rates (if any) would you prefer the competitor’s test?
+
+\textit{The base rates you would prefer are the ones wherein testing with a single competitor's test out performs testing twice with BinaxNOW. That is, the base rates where $P(C=1|T=1)$ is higher for the competitor when testing with at most 2 BinaxNOW tests.}
+
 -   Plot $P(C=1|T=1)$ vs base rate for both tests on the same graph.
+```{r}
+num_rates <- 1000
+base_rates <- seq(from=0, to=0.25, length.out=num_rates)
+
+# BinaxNOW
+binax_rates <- rep(NA, num_rates)
+for (i in 1:num_rates) {
+  binax_rates[i] <- bayes(base_rates[i], sensitivity_binax, specificity_binax)
+}
+
+# Competitor
+competitor_rates <- rep(NA, num_rates)
+for (i in 1:num_rates) {
+  competitor_rates[i] <- bayes(
+    base_rates[i], sensitivity_competitor, specificity_competitor
+  )
+}
+```
+```{r, echo=FALSE}
+plot(base_rates,
+     binax_rates,
+     type="l", 
+     col="red",
+     xlab="Base Rate",
+     ylab="Prob Covid given Positive Test"
+)
+lines(base_rates, competitor_rates, type="l", col="blue")
+legend("bottomright",
+       legend=c("BinaxNOW", "Competitor"),
+       col=c("red", "blue"),
+       pch=c(15, 15)
+)
+```
+
 -   Write 2-3 sentences explaining at which base rates each test is preferable and why the preference changes (or doesn’t change).
+
+\textit{Within the context of covid, we would prefer the BinaxNOW test for all base rates. Compared to the competitor, BinaxNOW is more accurate at determining an infected individual (red line is "above" the blue line).}
 
 **d)** Suppose the competitor offers a second generation test to you with a sensitivity 82% and specificity 99.7%.
 
--   Calculate $P(C_1|T_1)$ for BinaxNOW vs the competitor’s generation 2 test.
+-   Calculate $P(C=1|T=1)$ for BinaxNOW vs the competitor’s generation 2 test.
+```{r}
+sensitivity_competitor <- .82
+specificity_competitor <- .997
+
+# BinaxNOW
+p_infected_g_pos_binax <- bayes(
+  p_infected, sensitivity_binax, specificity_binax
+)
+
+# Competitor
+p_infected_g_pos_c <- bayes(
+  p_infected, sensitivity_competitor, specificity_competitor
+)
+```
+```{r, echo=FALSE}
+cat("P(C=1|T=1):\n")
+cat("BinaxNow:   ", p_infected_g_pos_binax, "\n")
+cat("Competitor: ", p_infected_g_pos_c)
+```
 -   The competitor’s new test also costs 2x more than BinaxNOW. For which base rates (if any) would you prefer the competitor’s new test?
--   Plot $P(C_1|T_1)$ vs base rate for both tests on the same graph.
+
+\textit{The same argument applies here as in \textbf{c)} from above. That is, when two or less BinaxNOW tests out perform a single competitor's test.}
+
+-   Plot $P(C=1|T=1)$ vs base rate for both tests on the same graph.
+```{r}
+num_rates <- 1000
+base_rates <- seq(from=0, to=0.25, length.out=num_rates)
+
+# BinaxNOW
+binax_rates <- rep(NA, num_rates)
+for (i in 1:num_rates) {
+  binax_rates[i] <- bayes(base_rates[i], sensitivity_binax, specificity_binax)
+}
+
+# Competitor
+competitor_rates <- rep(NA, num_rates)
+for (i in 1:num_rates) {
+  competitor_rates[i] <- bayes(
+    base_rates[i], sensitivity_competitor, specificity_competitor
+  )
+}
+```
+```{r, echo=FALSE}
+plot(base_rates,
+     binax_rates,
+     type="l", 
+     col="red",
+     xlab="Base Rate",
+     ylab="Prob Covid given Positive Test"
+)
+lines(base_rates, competitor_rates, type="l", col="blue")
+legend("bottomright",
+       legend=c("BinaxNOW", "Competitor"),
+       col=c("red", "blue"),
+       pch=c(15, 15)
+)
+```
+
 -   Write 2-3 sentences explaining at which base rates each test is preferable and why the preference changes (or doesn’t change).
+
+\textit{Unlike \textbf{c)} from above, and barring monetary concern, the competitor is prefered at all base rate values. The same argument applies here as above, that being blue above red.}
 
 ## 2. Computing Probabilities
 
