@@ -24,15 +24,15 @@ specificity_binax <- 0.995
 
 \textit{Let's prepare some helper functions we will use later.}
 ```{r}
-bayes <- function(base_rate, sensitivity, specificity) {
-  p_evidence <- (sensitivity * base_rate) + ((1 - specificity) * (1 - base_rate))
-  return((sensitivity * base_rate) / p_evidence)
+bayes <- function(prior, sensitivity, specificity) {
+  p_evidence <- (sensitivity * prior) + ((1 - specificity) * (1 - prior))
+  return((sensitivity * prior) / p_evidence)
 }
 ```
 
 **a)** Suppose you take a BimaxNOW COVID-19 antigen test. What is the probability of an administered BinaxNOW test returning to you a positive result?
 
-\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = P(T=1|C=1)P(C=1) + P(T=1|C=0)P(C=0)$ where $T$ refers to the test result and $C$ refers to the presence of the antigen.}
+\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = P(T=1|C=1)P(C=1) + P(T=1|C=0)P(C=0) = sentitivity * prior + (1 - specificity) * (1 - prior)$ where $T$ refers to the test result and $C$ refers to the presence of the antigen.}
 ```{r}
 p_pos <- (
   sensitivity_binax * p_infected + (1 - specificity_binax) * (1 - p_infected)
@@ -81,7 +81,7 @@ cat("Competitor: ", p_infected_g_pos_c)
 
 -   The competitor’s test costs 2x more. For which base rates (if any) would you prefer the competitor’s test?
 
-\textit{The base rates you would prefer are the ones wherein testing with a single competitor's test out performs testing twice with BinaxNOW. That is, the base rates where $P(C=1|T=1)$ is higher for the competitor when testing with at most 2 BinaxNOW tests.}
+\textit{The base rates you would prefer are the ones wherein testing with a single competitor's test out performs testing twice with BinaxNOW. That is, the base rates where $P(C=1|T=1)$ is higher for the competitor when testing with at most 2 BinaxNOW tests. In this case, that is none.}
 
 -   Plot $P(C=1|T=1)$ vs base rate for both tests on the same graph.
 ```{r}
@@ -89,18 +89,14 @@ num_rates <- 1000
 base_rates <- seq(from=0, to=0.25, length.out=num_rates)
 
 # BinaxNOW
-binax_rates <- rep(NA, num_rates)
-for (i in 1:num_rates) {
-  binax_rates[i] <- bayes(base_rates[i], sensitivity_binax, specificity_binax)
-}
+binax_rates <- sapply(base_rates,
+  function(p) bayes(p, sensitivity_binax, specificity_binax)
+)
 
 # Competitor
-competitor_rates <- rep(NA, num_rates)
-for (i in 1:num_rates) {
-  competitor_rates[i] <- bayes(
-    base_rates[i], sensitivity_competitor, specificity_competitor
-  )
-}
+competitor_rates <- sapply(base_rates,
+  function(p) bayes(p, sensitivity_competitor, specificity_competitor)
+)
 ```
 ```{r, echo=FALSE}
 plot(base_rates,
@@ -133,6 +129,9 @@ specificity_competitor <- .997
 p_infected_g_pos_binax <- bayes(
   p_infected, sensitivity_binax, specificity_binax
 )
+p_infected_g_pos_binax_second <- bayes(
+  p_infected, p_infected_g_pos_binax, specificity_binax
+)
 
 # Competitor
 p_infected_g_pos_c <- bayes(
@@ -141,8 +140,9 @@ p_infected_g_pos_c <- bayes(
 ```
 ```{r, echo=FALSE}
 cat("P(C=1|T=1):\n")
-cat("BinaxNow:   ", p_infected_g_pos_binax, "\n")
-cat("Competitor: ", p_infected_g_pos_c)
+cat("BinaxNow:       ", p_infected_g_pos_binax, "\n")
+cat("Competitor:     ", p_infected_g_pos_c, "\n")
+cat("BinaxNow (2nd): ", p_infected_g_pos_binax_second)
 ```
 -   The competitor’s new test also costs 2x more than BinaxNOW. For which base rates (if any) would you prefer the competitor’s new test?
 
@@ -154,18 +154,14 @@ num_rates <- 1000
 base_rates <- seq(from=0, to=0.25, length.out=num_rates)
 
 # BinaxNOW
-binax_rates <- rep(NA, num_rates)
-for (i in 1:num_rates) {
-  binax_rates[i] <- bayes(base_rates[i], sensitivity_binax, specificity_binax)
-}
+binax_rates <- sapply(base_rates,
+  function(p) bayes(p, sensitivity_binax, specificity_binax)
+)
 
 # Competitor
-competitor_rates <- rep(NA, num_rates)
-for (i in 1:num_rates) {
-  competitor_rates[i] <- bayes(
-    base_rates[i], sensitivity_competitor, specificity_competitor
-  )
-}
+competitor_rates <- sapply(base_rates,
+  function(p) bayes(p, sensitivity_competitor, specificity_competitor)
+)
 ```
 ```{r, echo=FALSE}
 plot(base_rates,
@@ -192,13 +188,13 @@ legend("bottomright",
 Implement and run the following chunk of code to create a distribution, samples. Create a plot of that distribution. Then, where called for, write a short line of R code to compute an answer to each question. Analytical solutions will not be accepted.
 
 ```{r}
-p_grid <- seq( from=0 , to=1, length.out=1000)
+p_grid <- seq(from=0, to=1, length.out=1000)
 prior <- rep(1, 1000)
-likelihood <- dbinom( 6, size=10 , prob=p_grid )
+likelihood <- dbinom(6, size=10, prob=p_grid)
 posterior <- likelihood * prior
 posterior <- posterior / sum(posterior)
 set.seed(712)
-samples <- sample( p_grid , prob=posterior , size=1e4, replace=TRUE )
+samples <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
 ```
 
 **a)** How much posterior probability lies below $p = 0.5$?
@@ -233,6 +229,27 @@ Write your own R code chunks to answer the following questions. Analytical solut
 **a)** Imagine a country where there are only two political parties, Red and Blue, which divide the electorate equally. One difference between registered Blue voters and registered Red voters is their willingness to vote for the opposing party’s candidate. Blue voters vote Red 20% of the time, otherwise they vote Blue. Red voters vote Blue 10% of the time, otherwise they vote Red. Voters who switch are called swing voters.
 
 Smith was a swing voter in the last election but you do not know whether he is Red or Blue. (Nobody changes parties.) What is the probability that Smith will be a swing voter in the next election? Explain your reasoning. Assume the prior probability of a person being in Blue is 0.265.
+
+
+
+$$P(Swing\ (red)) = \frac{P(V=b|R=r)P(R=r)}{P(V=b|R=r)P(R=r) + P(V=r|R=b)P(R=b)}$$
+```{r}
+p_blue <- 0.265
+# The parties divide the country equally therefore p_red = p_blue
+p_red <- p_blue
+
+p_b_v_r <- 0.1 # Probability red votes blue
+p_r_v_b <- 0.2 # Probability blue votes red
+
+p_swing_red <- bayes(p_red, p_b_v_r, (1-p_r_v_b))
+p_swing_blue <- bayes(p_blue, p_r_v_b, (1-p_b_v_r))
+```
+```{r, echo=FALSE}
+cat("Prob Red Swing Voter:  ", p_swing_red)
+cat("\n")
+cat("Prob Blue Swing Voter: ", p_swing_blue)
+```
+
 
 **b)** Now imagine a country where there are three political parties: Red, Blue, and Green. Red voters vote Blue 10% of the time, vote for Green 5% of the time, and vote their own party, Red, 85% of the time. Blue voters vote Red 15% of the time, Green 5% of the time, and their own party the remaining 80% of the time. Finally, Green votes Blue 20% of the time, Red 10% of the time, and Green the remainder. The electorate is evenly among the three parties.
 
