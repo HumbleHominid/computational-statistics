@@ -1,8 +1,10 @@
 ---
 title: "Problem Set 1"
 author: "Michael Fryer"
-date: "`r Sys.Date()`"
-output: pdf_document
+date: "Collaborators: Florian"
+output: 
+ pdf_document:
+   number_sections: true
 ---
 
 ```{r setup, include=FALSE}
@@ -10,29 +12,27 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
 ```
 
-## 1. COVID Home Test
+For this assignment, I collaborated with Florian. We discussed our independent solutions to the assignment and discussed our thoughts on part 4 (reflecting on this assignment).
+
+# COVID Home Test
 
 In a clinical trial, the BinaxNOW home COVID-19 antigen test correctly gave a positive result 75.5% of the time and correctly gave a negative result 99.5% of the time. For the next set of questions, assume that presence of the antigen suﬀices for a person to have COVID-19 and absence of the antigen suﬀices for that person to not have COVID-19. Finally, assume that 10% of the people in your community are currently infected with COVID-19. (This is your base rate for exposure.)
 
 ```{r}
 # Data from above
 p_infected <- 0.1
-
 sensitivity_binax <- 0.755
 specificity_binax <- 0.995
-```
-
-\textit{Let's prepare some helper functions we will use later.}
-```{r}
+# Bayes helper for later
 bayes <- function(prior, sensitivity, specificity) {
   p_evidence <- (sensitivity * prior) + ((1 - specificity) * (1 - prior))
   return((sensitivity * prior) / p_evidence)
 }
 ```
 
-**a)** Suppose you take a BimaxNOW COVID-19 antigen test. What is the probability of an administered BinaxNOW test returning to you a positive result?
+**a)** Suppose you take a BimaxNOW COVID-19 antigen test. What is the probability of an administered BinaxNOW test returning to you a positive result? 
 
-\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = P(T=1|C=1)P(C=1) + P(T=1|C=0)P(C=0) = sentitivity * prior + (1 - specificity) * (1 - prior)$ where $T$ refers to the test result and $C$ refers to the presence of the antigen.}
+\textit{The probability of an administered BinaxNOW test returning to you a positive result is equal to $P(T=1) = sentitivity * prior + (1 - specificity) * (1 - prior)$.}
 ```{r}
 p_pos <- (
   sensitivity_binax * p_infected + (1 - specificity_binax) * (1 - p_infected)
@@ -47,7 +47,6 @@ cat("Probability of getting a positive result: ", p_pos)
 \textit{This is the same as above, however we use different values for our base rate.}
 ```{r}
 p_infected_nz <- 0.015
-
 p_pos <- (
   sensitivity_binax * p_infected_nz + (1 - specificity_binax) * (1 - p_infected_nz)
 )
@@ -62,7 +61,6 @@ cat("Probability of getting a positive result (in New Zealand): ", p_pos)
 ```{r}
 sensitivity_competitor <- .9
 specificity_competitor <- .99
-
 # BinaxNOW
 p_infected_g_pos_binax <- bayes(
   p_infected, sensitivity_binax, specificity_binax
@@ -73,7 +71,7 @@ p_infected_g_pos_c <- bayes(
 )
 ```
 ```{r, echo=FALSE}
-cat("P(C=1|T=1):\n")
+cat("Probability of Having COVID Given Positive Result:\n")
 cat("BinaxNow:   ", p_infected_g_pos_binax, "\n")
 cat("Competitor: ", p_infected_g_pos_c)
 ```
@@ -101,8 +99,9 @@ plot(base_rates,
      binax_rates,
      type="l", 
      col="red",
+     main="Probability of Having COVID Given Positive Result",
      xlab="Base Rate",
-     ylab="Prob Covid given Positive Test"
+     ylab="Probability"
 )
 lines(base_rates, competitor_rates, type="l", col="blue")
 legend("bottomright",
@@ -122,7 +121,6 @@ legend("bottomright",
 ```{r}
 sensitivity_competitor <- .82
 specificity_competitor <- .997
-
 # BinaxNOW
 p_infected_g_pos_binax <- bayes(
   p_infected, sensitivity_binax, specificity_binax
@@ -138,8 +136,8 @@ p_infected_g_pos_c <- bayes(
 ```{r, echo=FALSE}
 cat("P(C=1|T=1):\n")
 cat("BinaxNow:       ", p_infected_g_pos_binax, "\n")
-cat("Competitor:     ", p_infected_g_pos_c, "\n")
-cat("BinaxNow (2nd): ", p_infected_g_pos_binax_second)
+cat("BinaxNow (2nd): ", p_infected_g_pos_binax_second, "\n")
+cat("Competitor:     ", p_infected_g_pos_c)
 ```
 -   The competitor’s new test also costs 2x more than BinaxNOW. For which base rates (if any) would you prefer the competitor’s new test?
 
@@ -148,8 +146,7 @@ cat("BinaxNow (2nd): ", p_infected_g_pos_binax_second)
 -   Plot $P(C=1|T=1)$ vs base rate for both tests on the same graph.
 ```{r}
 num_rates <- 1000
-base_rates <- seq(from=0, to=0.25, length.out=num_rates)
-
+base_rates <- seq(from=0, to=1, length.out=num_rates)
 # BinaxNOW
 binax_rates <- sapply(base_rates,
   function(p) bayes(p, sensitivity_binax, specificity_binax)
@@ -157,7 +154,6 @@ binax_rates <- sapply(base_rates,
 binax_rates_second <- sapply(binax_rates,
   function(p) bayes(p, sensitivity_binax, specificity_binax)
 )
-
 # Competitor
 competitor_rates <- sapply(base_rates,
   function(p) bayes(p, sensitivity_competitor, specificity_competitor)
@@ -168,8 +164,9 @@ plot(base_rates,
      binax_rates,
      type="l", 
      col="red",
+     main="Probability of Having COVID Given Positive Result",
      xlab="Base Rate",
-     ylab="Prob Covid given Positive Test"
+     ylab="Probability"
 )
 lines(base_rates, binax_rates_second, type="l", col="green")
 lines(base_rates, competitor_rates, type="l", col="blue")
@@ -184,7 +181,7 @@ legend("bottomright",
 
 \textit{Unlike \textbf{c)} from above, and barring monetary concern, the competitor is preferred at all base rate values. The same argument applies here as above, that being blue above red.}
 
-## 2. Computing Probabilities
+# Computing Probabilities
 
 Implement and run the following chunk of code to create a distribution, samples. Create a plot of that distribution. Then, where called for, write a short line of R code to compute an answer to each question. Analytical solutions will not be accepted.
 
@@ -196,7 +193,7 @@ likelihood <- dbinom(6, size=10, prob=p_grid)
 posterior <- likelihood * prior
 posterior <- posterior / sum(posterior)
 samples <- sample(p_grid, prob=posterior, size=1e4, replace=TRUE)
-dens(samples)
+plot(p_grid, posterior, type="b")
 ```
 
 **a)** How much posterior probability lies below $p = 0.5$?
@@ -224,7 +221,7 @@ sum(samples > 0.2 & samples < 0.8) / length(samples)
 quantile(samples, 0.2)
 ```
 
-## 3. Swing Voters
+# Swing Voters
 
 Write your own R code chunks to answer the following questions. Analytical solutions will not suﬀice.
 
@@ -347,7 +344,7 @@ cat("Probability Smith will swing again: ", p_swing_again)
 ```
 
 
-## 4. Reflection
+# Reflection
 
 Look back at problems 1 to 3. In each case, you updated beliefs based on observations:
 
@@ -357,6 +354,8 @@ Look back at problems 1 to 3. In each case, you updated beliefs based on observa
 
 Write a 3-4 sentence paragraph explaining what these three problems have in common from a Bayesian perspective. What role do priors play in each?
 
-## 5. AI Declaration
+\textit{From a Bayesian perspective, we are concerning ourselves with updating our prior beliefs with new information. This is circular reasoning, I admit, but important nonetheless. In each example we take some previous knowledge, and update our small-world view with new information. In problem 1 this is done using Bayes, in problem 2 we draw conclusions directly from the posterior (our small-world view), and in problem 3 by generating samples and then again drawing conclusions directly from the posterior.}
 
-\textit{ChatGPT was used to help understand how to write R code. Specifically for question 3, ChatGPT was used to understand how broadcasting operations works. This was useful for both the analytical solution (omitted from the pdf) and for the numeric solution. Aside from those cases, ChatGPT was not used in this assignment.}
+# AI Declaration
+
+\textit{ChatGPT was used to help understand how to write R code. Specifically for problem 3, ChatGPT was used to understand how broadcasting operations works. This was useful for both the analytical solution (omitted from the knitted pdf) and for the numeric solution. Aside from those cases, ChatGPT was not used in this assignment.}
