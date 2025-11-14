@@ -2,3 +2,5 @@
 .Rproj.user
 .Rdata
 .Rhistory
+*.tex
+*.log
