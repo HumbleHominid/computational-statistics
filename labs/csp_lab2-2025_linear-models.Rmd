@@ -1,0 +1,444 @@
+---
+title: "Computational Statistics & Probability"
+author: "Lab 2 - Linear Models"
+date: "Fall 2025"
+output: pdf_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+answer_key <- FALSE
+library(rethinking)
+```
+
+
+# Learning Objectives
+
+By the end of this lab, you will be able to:
+
+- Specify and justify priors for linear regression parameters
+- Use prior predictive simulation to check if priors are reasonable
+- Fit linear models using `quap()` 
+- Interpret regression coefficients in terms of associations
+- Make predictions with uncertainty for new observations
+- Use posterior predictive checks to assess model fit
+
+# Introduction: Predicting Height from Weight
+
+In this lab, we'll build a linear model to predict adult height from weight using the !Kung San census data.
+
+**The Model:**
+$$
+\begin{aligned}
+\text{height}_i &\sim \text{Normal}(\mu_i, \sigma) \\
+\mu_i &= \alpha + \beta \cdot (\text{weight}_i - \bar{\text{weight}}) \\
+\alpha &\sim \text{Normal}(178, 20) \\
+\beta &\sim \text{Log-Normal}(0, 1) \\
+\sigma &\sim \text{Uniform}(0, 50)
+\end{aligned}
+$$
+
+**Key concepts:**
+
+  - $\alpha$ (alpha): Average height when weight = mean weight
+  - $\beta$ (beta): Change in height per 1 kg increase in weight
+  - $\sigma$ (sigma): Standard deviation around the line
+  - Centering weight makes $\alpha$ interpretable and improves computation
+
+```{r load-data}
+# be sure `rethinking` is loaded
+data(Howell1)
+d <- Howell1
+d2 <- d[ d$age >= 18 , ] # adults only  # Adults only
+
+# Summary
+cat("Number of adults:", nrow(d2), "\n")
+cat("Weight range:", min(d2$weight), "to", max(d2$weight), "kg\n")
+cat("Height range:", min(d2$height), "to", max(d2$height), "cm\n")
+```
+
+
+# 1. Prior Predictive Simulation
+
+Before fitting, check if priors make sense.
+
+
+
+**a)** Understanding the Priors
+
+
+We choose:
+- $\alpha \sim$ Normal(178, 20): Average height $\approx 178$ cm, $\pm 20$ cm uncertainty
+- $\beta \sim$  Log-Normal(0, 1): Positive relationship (can't shrink by gaining weight!)
+- $\sigma \sim$  Uniform(0, 50): Residual variation up to 50 cm
+
+Why use Log-Normal for $\beta$ instead of Normal? (1-2 sentences)
+```{r prior-explain, include=!answer_key}
+# YOUR ANSWER:
+```
+
+```{r prior-explain-ans, include=answer_key}
+# ANSWER: 
+# Log-Normal is strictly positive, which makes biological sense:
+# gaining weight shouldn't make you shorter. Normal would allow
+# negative beta values (people getting shorter as they get heavier).
+```
+
+
+**b)** Simulate from Priors
+
+Simulate N = 100 prior regression lines:
+```{r prior-sim, include=!answer_key}
+set.seed(212)
+N <- 100
+
+# Sample from priors
+# alpha <- # TODO #YOUR CODE HERE
+# beta <- # TODO #YOUR CODE HERE
+
+# Plot
+# plot(NULL, 
+#      xlim = c(30, 70), ylim = c(50, 250),
+#      xlab = "Weight (kg)", ylab = "Height (cm)",
+#      main = "Prior Predictive Simulation")
+# 
+# abline(h = 0, lty = 2, col = "gray")
+# abline(h = 272, lty = 2, col = "gray")
+# 
+# xbar <- mean(d2$weight)
+# for (i in 1:N) {
+#   curve(alpha[i] + beta[i] * (x - xbar),
+#         from = 30, to = 70, add = TRUE,
+#         col = col.alpha("black", 0.2))
+# }
+```
+```{r prior-sim-ans, include=answer_key}
+set.seed(212)
+N <- 100
+
+alpha <- rnorm(N, 178, 20)
+beta <- rlnorm(N, 0, 1)
+
+plot(NULL, 
+     xlim = c(30, 70), ylim = c(50, 250),
+     xlab = "Weight (kg)", ylab = "Height (cm)",
+     main = "Prior Predictive Simulation")
+
+abline(h = 0, lty = 2, col = "gray")
+abline(h = 272, lty = 2, col = "gray")
+text(35, 272, "Tallest human", pos = 3, cex = 0.8)
+
+xbar <- mean(d2$weight)
+for (i in 1:N) {
+  curve(alpha[i] + beta[i] * (x - xbar),
+        from = 30, to = 70, add = TRUE,
+        col = col.alpha("black", 0.2))
+}
+
+# INTERPRETATION:
+# Most lines positive (increasing height with weight)
+# Most fall in plausible ranges (100-200 cm)
+# Some extremes, but that's OK with vague priors
+# No negative slopes (thanks to Log-Normal)
+```
+
+**c)** Check Prior Predictions
+For 50 kg adult, what heights does prior predict?
+```{r prior-check, include=!answer_key}
+# predicted_heights <- # TODO (use alpha, beta from part b)
+# mean(predicted_heights)
+# PI(predicted_heights, prob = 0.89)
+```
+
+```{r prior-check-ans, include=answer_key}
+weight_test <- 50
+predicted_heights <- alpha + beta * (weight_test - xbar)
+
+cat("For 50 kg adult, prior predicts:\n")
+cat("  Mean:", round(mean(predicted_heights), 1), "cm\n")
+cat("  89% PI:", round(PI(predicted_heights, 0.89), 1), "cm\n")
+
+```
+
+
+# 2. Fit the Model
+```{r fit-model}
+m4.3 <- quap(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b * (weight - xbar),
+    a ~ dnorm(178, 20),
+    b ~ dlnorm(0, 1),
+    sigma ~ dunif(0, 50)
+  ), 
+  data = d2
+)
+
+precis(m4.3)
+```
+
+*a)* Interpret Coefficients
+```{r interpret, include=!answer_key}
+# 1. What is posterior mean for intercept (a)? What does it mean?
+# YOUR ANSWER:
+
+# 2. What is posterior mean for slope (b)? What does it mean?
+# YOUR ANSWER:
+
+# 3. Has data updated beliefs about beta?
+#    Prior Log-Normal(0,1) has mean approx. 1.65
+# YOUR ANSWER:
+```
+
+```{r interpret-ans, include=answer_key}
+# 1. Intercept (a): approx. 154.6 cm
+#    Expected height at average weight (44.99 kg)
+#    Centering makes this directly interpretable
+
+# 2. Slope (b): approx. 0.90 cm/kg
+#    Each 1 kg increase → ~0.90 cm taller on average
+#    This is ASSOCIATION, not causation
+
+# 3. Prior vs. Posterior:
+#    Prior: mean = approx. 1.65, very wide
+#    Posterior: mean = approx. 0.90, narrow (0.84-0.97)
+#    Data substantially updated beliefs!
+
+# 4. Sigma: approx. 5.1 cm
+#    Even accounting for weight, heights vary approx. 5 cm
+#    Other factors: genetics, nutrition, etc.
+```
+
+**b)** Prior vs. Posterior Comparison
+```{r prior-post, include=answer_key}
+post <- extract.samples(m4.3)
+
+par(mfrow = c(1, 2))
+
+# Prior for beta
+prior_beta <- rlnorm(10000, 0, 1)
+dens(prior_beta, xlim = c(0, 4),
+     main = "Prior for Beta", xlab = "beta (cm/kg)")
+
+# Posterior for beta
+dens(post$b, xlim = c(0, 4),
+     main = "Posterior for Beta", xlab = "beta (cm/kg)",
+     col = "steelblue", lwd = 2)
+
+par(mfrow = c(1, 1))
+
+# Prior was vague (0 to 4+)
+# Posterior concentrated around 0.9
+# Bayesian learning!
+```
+
+
+# 3. Make Predictions
+
+Five new adults - predict their heights:
+
+| Individual | Weight (kg) | Predicted Height | 89% Interval |
+|:----------:|:-----------:|:----------------:|:------------:|
+| 1          | 47          |                  |              |
+| 2          | 60          |                  |              |
+| 3          | 37          |                  |              |
+| 4          | 51          |                  |              |
+| 5          | 43          |                  |              |
+
+```{r predictions, include=!answer_key}
+# new_data <- data.frame(
+#   individual = 1:5,
+#   weight = c(47, 60, 37, 51, 43)
+# )
+
+# height_sim <- # TODO: use sim()
+# Exp_height <- # TODO: mean for each individual
+# height_CI <- # TODO: 89% CI for each
+```
+
+```{r predictions-ans, include=answer_key}
+new_data <- data.frame(
+  individual = 1:5,
+  weight = c(47, 60, 37, 51, 43)
+)
+
+height_sim <- sim(m4.3, data = new_data)
+Exp_height <- apply(height_sim, 2, mean)
+height_CI <- apply(height_sim, 2, PI, prob = 0.89)
+
+new_data$predicted <- round(Exp_height, 1)
+new_data$CI_lower <- round(height_CI[1, ], 1)
+new_data$CI_upper <- round(height_CI[2, ], 1)
+
+library(knitr)
+kable(new_data, col.names = c("Individual", "Weight (kg)", 
+      "Predicted (cm)", "89% Lower", "89% Upper"))
+```
+
+## Interpret Predictions
+```{r interp-pred, include=!answer_key}
+# For Individual 2 (60 kg):
+# 1. Predicted height?
+# 2. What does 89% interval tell you?
+# 3. Why uncertainty even though we know weight?
+```
+
+```{r interp-pred-ans, include=answer_key}
+# 1. approx. 168 cm
+# 2. 89% confident true height in interval (approx. 158-178 cm)
+#    Accounts for parameter uncertainty + individual variation
+# 3. Two sources of uncertainty:
+#    - Parameter: don't know alpha,beta,sigma exactly (epistemic)
+#    - Individual: people vary at same weight (aleatoric)
+#    This is why sim() not just link()
+```
+
+# 4. Visualize Regression Line
+```{r reg-plot, include=!answer_key}
+# weight_seq <- # TODO
+# mu <- # TODO: use link()
+# mu_mean <- # TODO
+# mu_PI <- # TODO
+
+# plot(height ~ weight, data = d2, col = col.alpha("black", 0.5))
+# lines(weight_seq, mu_mean, col = "steelblue", lwd = 3)
+# shade(mu_PI, weight_seq, col = col.alpha("steelblue", 0.3))
+```
+
+```{r reg-plot-ans, include=answer_key}
+weight_seq <- seq(25, 70, by = 1)
+mu <- link(m4.3, data = data.frame(weight = weight_seq))
+mu_mean <- apply(mu, 2, mean)
+mu_PI <- apply(mu, 2, PI, prob = 0.89)
+
+plot(height ~ weight, data = d2, 
+     col = col.alpha("black", 0.5),
+     xlab = "Weight (kg)", ylab = "Height (cm)",
+     main = "Height vs. Weight with 89% Uncertainty")
+
+lines(weight_seq, mu_mean, col = "steelblue", lwd = 3)
+shade(mu_PI, weight_seq, col = col.alpha("steelblue", 0.3))
+
+legend("bottomright",
+       legend = c("Data", "Mean", "89% interval"),
+       pch = c(1, NA, 15),
+       lty = c(NA, 1, NA),
+       col = c("black", "steelblue", col.alpha("steelblue", 0.3)),
+       lwd = c(NA, 3, NA))
+```
+
+# 5. Posterior Predictive Checks
+
+**a)** Simulate for Existing Data
+```{r ppc, include=!answer_key}
+# height_post_pred <- # TODO: sim() for all d2
+# pred_mean <- # TODO
+# pred_PI <- # TODO
+```
+
+```{r ppc-ans, include=answer_key}
+height_post_pred <- sim(m4.3, data = d2)
+
+cat("Simulated dimensions:", dim(height_post_pred), "\n")
+
+pred_mean <- apply(height_post_pred, 2, mean)
+pred_PI <- apply(height_post_pred, 2, PI, prob = 0.89)
+
+residuals <- d2$height - pred_mean
+cat("Residual mean:", round(mean(residuals), 3), "\n")
+cat("Residual SD:", round(sd(residuals), 2), "\n")
+```
+
+**b)** Visual Checks
+```{r ppc-viz, eval=answer_key}
+par(mfrow = c(1, 2))
+
+# Observed vs. Predicted
+plot(d2$height, pred_mean,
+     xlab = "Observed (cm)", ylab = "Predicted (cm)",
+     main = "Observed vs. Predicted",
+     col = col.alpha("black", 0.5), pch = 16)
+abline(0, 1, col = "red", lwd = 2, lty = 2)
+
+# Residuals
+plot(d2$weight, residuals,
+     xlab = "Weight (kg)", ylab = "Residual (cm)",
+     main = "Residuals vs. Weight",
+     col = col.alpha("black", 0.5), pch = 16)
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+
+par(mfrow = c(1, 1))
+```
+
+
+**c)** Check Coverage
+```{r coverage, eval=answer_key}
+in_interval <- (d2$height >= pred_PI[1, ]) & 
+                (d2$height <= pred_PI[2, ])
+coverage <- mean(in_interval)
+cat("Coverage:", round(coverage, 3), "\n")
+cat("Expected: 0.89\n")
+if (abs(coverage - 0.89) < 0.05) {
+  cat("Well-calibrated!\n")
+} else {
+  cat(" Coverage off\n")
+}
+```
+
+# 6. Reflection Questions
+
+**a)** Prior vs. Posterior Predictive
+
+What's the difference? Why do both?
+```{r ref-a, include=!answer_key}
+# YOUR ANSWER:
+```
+```{r ref-a-ans, eval=answer_key}
+# Prior predictive: Check priors BEFORE data
+# Shows what we'd expect if priors were true
+# Posterior predictive: Validate model AFTER fitting
+# Shows if model reproduces observed patterns
+# Both needed: assumptions reasonable (prior) + model adequate (posterior)
+```
+
+**b)** Uncertainty in Predictions
+
+Why are individual predictions (Q3) wider than regression line (Q4)?
+```{r ref-b, include=!answer_key}
+# YOUR ANSWER:
+```
+```{r ref-b-ans, eval=answer_key}
+# Regression line (link): Only parameter uncertainty
+# Individual predictions (sim): Parameter uncertainty + individual variation
+# Even if we knew true line, people vary around it (genetics, etc.)
+```
+
+**c)** Association vs. Causation
+
+Does gaining weight CAUSE increased height?
+```{r ref-c, include=!answer_key}
+# YOUR ANSWER:
+```
+```{r ref-c-ans, include=answer_key}
+# NO - this shows ASSOCIATION not causation
+# Both influenced by common causes (genetics, age, nutrition)
+# Could be reverse (tall -> heavy) or confounding
+# Need experiments or causal models for causation!
+```
+
+
+
+# Summary
+
+Complete Bayesian workflow for linear regression:
+
+1.  Specified priors
+2.  Prior predictive simulation
+3.  Fit model with quap()
+4.  Interpreted coefficients
+5.  Made predictions with uncertainty
+6.  Posterior predictive checks
+
+**Key:** Always check before (prior) and after (posterior)!

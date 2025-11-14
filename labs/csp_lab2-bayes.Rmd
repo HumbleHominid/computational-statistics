@@ -1,0 +1,150 @@
+---
+title: "Lab 2"
+author: "Michael Fryer"
+date: "`r Sys.Date()`"
+output:
+ pdf_document:
+   number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
+```
+
+# Learning Objectives
+
+By the end of this lab, you will be able to:
+
+- Specify and justify priors for linear regression parameters
+- Use prior predictive simulation to check if priors are reasonable
+- Fit linear models using quap()
+- Interpret regression coefficients in terms of associations
+- Make predictions with uncertainty for new observations
+- Use posterior predictive checks to assess model fit
+
+# Introduction: Predicting Height from Weight
+
+In this lab, we’ll build a linear model to predict adult height from weight using the !Kung San census data.
+
+## Key concepts:
+
+- $\alpha$ (alpha): Average height when weight = mean weight
+- $\beta$ (beta): Change in height per 1 kg increase in weight
+- $\sigma$ (sigma): Standard deviation around the line
+- Centering weight makes $\alpha$ interpretable and improves computation
+
+```{r}
+# be sure `rethinking` is loaded
+data(Howell1)
+d <- Howell1
+d2 <- d[ d$age >= 18 , ] # adults only # Adults only
+# Summary
+cat("Number of adults:", nrow(d2), "\n")
+```
+
+```{r}
+cat("Weight range:", min(d2$weight), "to", max(d2$weight), "kg\n")
+```
+
+```{r}
+cat("Height range:", min(d2$height), "to", max(d2$height), "cm\n")
+```
+
+# Prior Predictive Simulation
+
+Before fitting, check if priors make sense.
+
+**a)** Understanding the Priors
+
+We choose: - $\alpha$ ∼ Normal(178, 20): Average height ≈ 178 cm, ±20 cm uncertainty - $\beta$ ∼ Log-Normal(0, 1):
+Positive relationship (can’t shrink by gaining weight!) - $\sigma$ ∼ Uniform(0, 50): Residual variation up to 50 cm
+
+Why use Log-Normal for $\beta$ instead of Normal? (1-2 sentences)
+
+\textit{}
+
+**b)** Simulate from Priors
+
+Simulate N = 100 prior regression lines:
+
+```{r}
+set.seed(212)
+N <- 100
+# Sample from priors
+alpha <- dnorm(N, 178, 20)
+beta <- dlnorm(N, 0, 1)
+# Plot
+plot(NULL,
+  xlim = c(30, 70), ylim = c(50, 250),
+  xlab = "Weight (kg)", ylab = "Height (cm)",
+  main = "Prior Predictive Simulation"
+)
+
+abline(h = 0, lty = 2, col = "gray")
+abline(h = 272, lty = 2, col = "gray")
+
+xbar <- mean(d2$weight)
+for (i in 1:N) {
+  curve(alpha[i] + beta[i] * (x - xbar),
+  from = 30, to = 70, add = TRUE,
+  col = col.alpha("black", 0.2))
+}
+```
+
+**c)** Check Prior Predictions For 50 kg adult, what heights does prior predict?
+```{r}
+weight_test <- 50
+predicted_heights <- alpha + beta * (weight_test - xbar)
+mean(predicted_heights)
+PI(predicted_heights, prob = 0.89)
+```
+
+# Fit the Model
+
+```{r}
+m4.3 <- quap(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b * (weight - xbar),
+    a ~ dnorm(178, 20),
+    b ~ dlnorm(0, 1),
+    sigma ~ dunif(0, 50)
+  ),
+  data = d2
+)
+precis(m4.3)
+```
+
+**a)** Interpret Coefficients
+
+```{r}
+# 1. What is posterior mean for intercept (a)? What does it mean?
+# YOUR ANSWER: 154.6
+# 2. What is posterior mean for slope (b)? What does it mean?
+# YOUR ANSWER: 0.9
+# 3. Has data updated beliefs about beta?
+#   Prior Log-Normal(0,1) has mean approx. 1.65
+# YOUR ANSWER:
+```
+
+**b)** Prior vs. Posterior Comparison
+
+# Make Predictions
+
+Five new adults - predict their heights:
+
+```{r}
+# new_data <- data.frame(
+# individual = 1:5,
+# weight = c(47, 60, 37, 51, 43)
+# )
+# height_sim <- # TODO: use sim()
+# Exp_height <- # TODO: mean for each individual
+# height_CI <- # TODO: 89% CI for each
+```
+
+
+## Interpret Predicions
+
+
