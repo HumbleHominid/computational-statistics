@@ -22,6 +22,8 @@ data(foxes)
 d <- foxes
 # You must set random seed to 390
 set.seed(390)
+```
+```{r, echo=FALSE, eval=FALSE}
 # Inspect variables in `foxes`
 str(d)
 ```
@@ -44,6 +46,57 @@ If this DAG correctly describes the causal relationships, it makes specific pred
 - Indirect path: $A \rightarrow F \rightarrow W$
 
 If we regress weight on territory size without including food, the coefficient should capture both pathways, the "total association" between $A$ and $W$. Construct a linear regression (`m1a`) using `quap`. Urban foxes in this population have an average weight of 5kg. Use prior predictive simulation to assess the implications of your priors. Standardize the prediction variable.
+
+## Prior Predictive Simulation
+
+```{r}
+N <- 100
+# a is the intercept. This means a fox with territory size 0 has this weight.
+#   Let's assume that value is within 15% of the average weight of a fox
+a <- rnorm(N, 5, 0.75)
+# b represents the rate of change of a fox's weight with respect to territory
+#   size. Let's assume the mean for this value is 0.4 which represents an
+#   addition of 2 kg for every 5 sq-km
+b <- rnorm(N, 0.4, 0.5)
+xbar <- mean(d$area)
+```
+```{r, echo=FALSE}
+# Plot the prior prediction
+plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="arae sq-km", ylab="weight")
+mtext("Prior Prediction")
+# Twice the average weight of a fox
+abline(h=10, lty=1, lwd=0.5)
+# No weight at all (embryo)
+abline(h=0, lty=2)
+# Graph all the lines
+for (i in 1:N) 
+  curve(
+    a[i] + b[i]*(x - xbar),
+    from=min(d$area),
+    to=max(d$area),
+    col=col.alpha("black", 0.2),
+    add=TRUE
+  )
+```
+
+
+## Linear Regression
+
+```r
+N <- 100
+
+xbar <- mean(d$weight)
+m <- quap(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b * (weight - xbar),
+    a ~ dnorm(178, 20),
+    b ~ dlnorm(0, 1),
+    sigma ~ dunif(0, 50)
+  ),
+  data=d
+)
+```
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
