@@ -57,12 +57,12 @@ a <- rnorm(N, 5, 0.75)
 # b represents the rate of change of a fox's weight with respect to territory
 #   size. Let's assume the mean for this value is 0.4 which represents an
 #   addition of 2 kg for every 5 sq-km
-b <- rnorm(N, 0.4, 0.5)
+b <- rnorm(N, 0.4, 0.4)
 xbar <- mean(d$area)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
-plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="arae sq-km", ylab="weight")
+plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="area sq-km", ylab="weight")
 mtext("Prior Prediction")
 # Twice the average weight of a fox
 abline(h=10, lty=1, lwd=0.5)
@@ -82,23 +82,26 @@ for (i in 1:N)
 
 ## Linear Regression
 
-```r
-N <- 100
-
-xbar <- mean(d$weight)
+```{r}
 m <- quap(
   alist(
-    height ~ dnorm(mu, sigma),
-    mu <- a + b * (weight - xbar),
-    a ~ dnorm(178, 20),
-    b ~ dlnorm(0, 1),
-    sigma ~ dunif(0, 50)
+    weight ~ dnorm(mu, sigma),
+    mu <- a + b * (area - xbar),
+    # Priors from earlier
+    a ~ dnorm(5, 0.75),
+    b ~ dnorm(0.4, 0.4),
+    sigma ~ dunif(0, 5)
   ),
   data=d
 )
 ```
+```{r, echo=FALSE}
+precis(m)
+```
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
+
+\textit{We observe a $b$ value of 0.06 on average. This suggests that territory size has a very slightly positive effect on weight.}
 
 **b)** Regress weight on food availability. That is, construct a `quap` linear regression (`m1b`) to estimate the association of food availability and fox weight. _Before fitting the model_, standardize both `avgfood` and `weight` to have mean 0 and standard deviation 1.
 
