@@ -21,7 +21,8 @@ The `foxes` dataset contains data on urban fox populations.
 data(foxes)
 d <- foxes
 # You must set random seed to 390
-set.seed(390)
+rseed <- 390
+set.seed(rseed)
 ```
 ```{r, echo=FALSE, eval=FALSE}
 # Inspect variables in `foxes`
@@ -30,14 +31,14 @@ str(d)
 
 Consider the following hypothesized causal relationship between **territory size** and **body weight** in foxes.
 
-```{r, fig.align="center"}
+```{r, fig.align="center", echo=FALSE}
 fox_dag <- dagitty("dag {
   A -> F
   A -> W
   F -> W
 }")
 coordinates(fox_dag) <- list(x=c(A=0, F=-0.5, W=0.5), y=c(A=0, F=1, W=1))
-drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c"), radius=4)
+drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c"))
 ```
 
 where $A$, $F$ and $W$ represent random variables `area` (territory size), `avgfood`, and `weight`, respectively.
@@ -47,6 +48,14 @@ If this DAG correctly describes the causal relationships, it makes specific pred
 - Territory size (A) has a **direct** effect on weight $(W): A \rightarrow W$
 - Food availability (F) has a **direct** effect on weight $(W): F \rightarrow W$
 - Territory size (A) has an **indirect** effect on weight $(W)$ through food $(F): A \rightarrow F \rightarrow W$
+
+## Standardize the Values
+
+```{r}
+d$A <- standardize(d$area)
+d$F <- standardize(d$avgfood)
+d$W <- standardize(d$weight)
+```
 
 ## Part a
 
@@ -61,29 +70,25 @@ If we regress weight on territory size without including food, the coefficient s
 
 ```{r}
 N <- 100
-# a is the intercept. This means a fox with territory size 0 has this weight.
-#   Let's assume that value is within 15% of the average weight of a fox
-a <- rnorm(N, 5, 0.75)
-# b represents the rate of change of a fox's weight with respect to territory
-#   size. Let's assume the mean for this value is 0.4 which represents an
-#   addition of 2 kg for every 5 sq-km
-b <- rnorm(N, 0.4, 0.4)
-xbar <- mean(d$area)
+# As our data is standardized, we would expect our intercept, a, to be very
+#   close to 0
+a <- rnorm(N, 0, 0.2)
+# b represents the rate of change between our observed and unobserved variables.
+#   A value of 1 implies that for every one sd of change in our observed var.
+#   there is 1 sd of change in our unobserved variables. We will choose a sd of
+#   0.5 since that means we expect most of these slopes to be in -1 < b < 1
+b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
-plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="Area sq-km", ylab="Weight")
+plot(NULL, xlim=range(d$A), ylim=c(-2.5, 2.5), xlab="Area sq-km", ylab="Weight")
 mtext("Prior Prediction")
-# Twice the average weight of a fox
-abline(h=10, lty=1, lwd=0.5)
-# No weight at all (embryo)
-abline(h=0, lty=2)
 # Graph all the lines
 for (i in 1:N) 
   curve(
-    a[i] + b[i]*(x - xbar),
-    from=min(d$area),
-    to=max(d$area),
+    a[i] + b[i]*x,
+    from=min(d$A),
+    to=max(d$A),
     col=col.alpha("black", 0.2),
     add=TRUE
   )
@@ -92,14 +97,15 @@ for (i in 1:N)
 ### Linear Regression
 
 ```{r}
-m <- quap(
+mA <- quap(
   alist(
-    weight ~ dnorm(mu, sigma),
-    mu <- a + b * (area - xbar),
+    W ~ dnorm(mu, sigma),
+    # data is standardized so no need to subtract xbar
+    mu <- a + b*A,
     # Priors from earlier
-    a ~ dnorm(5, 0.75),
-    b ~ dnorm(0.4, 0.4),
-    sigma ~ dunif(0, 5)
+    a ~ dnorm(0, 0.2),
+    b ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
   ),
   data=d
 )
@@ -108,31 +114,39 @@ m <- quap(
 precis(m)
 ```
 
-### Plot the Predictions
+### Simulate the Priors
 
 ```{r}
-# Adding mu uncertainty
-area.seq <- seq(from=0, to=5.5, by=0.05)
-mu <- link(m, data=data.frame(area=area.seq))
-mu.mean <- apply(mu, 2, mean)
-mu.PI <- apply(mu, 2, PI, prob=0.89)
-# Adding a prediction interval (prediction uncertainty due to std uncertainty)
-sim.weight <- sim(m, data=list(area=area.seq))
-weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
+set.seed(rseed)
+prior <- extract.prior(mA)
+mu <- link(mA, post=prior, data=list(A=c(-2, 2)))
+plot(NULL, 
+     xlim=c(-2, 2), ylim=c(-2, 2),
+     xlab="Area (std)", ylab="Weight (std)"
+)
+mtext("Prior Simulation")
+for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
+```
 
+### Posterior Predictions
+
+```{r}
+A.seq <- seq(from=-3, to=3, length.out=N)
+mu <- link(mA, data=list(A=A.seq))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI)
 # Plot raw data
-plot(weight ~ area, data=d, col=col.alpha(rangi2, 0.7))
+plot(W ~ A, data=d, col=rangi2, xlab="Area (std)", ylab="Weight (std)")
+mtext("Posterior Prediction")
 # Plot MAP line
-lines(area.seq, mu.mean)
-# Plot HPDI region for line
-shade(mu.PI, area.seq)
-# Plot PI region for simulated heights
-shade(weight.PI, area.seq)
+lines(A.seq, mu.mean, lwd=2)
+# Plot HDPI region for line
+shade(mu.PI, A.seq)
 ```
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{We observe a $b$ value of 0.06 on average. This suggests that territory size has a very slightly positive effect on weight.}
+\textit{AHHHHHHHHHHHHHH}
 
 ## Part b
 
@@ -230,7 +244,7 @@ shade(mu.PI, avgfood.seq)
 shade(weight.PI, avgfood.seq)
 ```
 
-**c)** Now regress weight on _both_ territory size and weight. Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
+**c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
 
 
 
