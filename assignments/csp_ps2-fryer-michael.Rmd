@@ -40,6 +40,8 @@ If this DAG correctly describes the causal relationships, it makes specific pred
 - Food availability (F) has a **direct** effect on weight $(W): F \rightarrow W$
 - Territory size (A) has an **indirect** effect on weight $(W)$ through food $(F): A \rightarrow F \rightarrow W$
 
+## Part a
+
 **a)** According to the DAG, territory size effects weight through two paths:
 
 - Direct path: $A \rightarrow W$
@@ -47,7 +49,7 @@ If this DAG correctly describes the causal relationships, it makes specific pred
 
 If we regress weight on territory size without including food, the coefficient should capture both pathways, the "total association" between $A$ and $W$. Construct a linear regression (`m1a`) using `quap`. Urban foxes in this population have an average weight of 5kg. Use prior predictive simulation to assess the implications of your priors. Standardize the prediction variable.
 
-## Prior Predictive Simulation
+### Prior Predictive Simulation
 
 ```{r}
 N <- 100
@@ -62,7 +64,7 @@ xbar <- mean(d$area)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
-plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="area sq-km", ylab="weight")
+plot(NULL, xlim=range(d$area), ylim=c(-1, 12), xlab="Area sq-km", ylab="Weight")
 mtext("Prior Prediction")
 # Twice the average weight of a fox
 abline(h=10, lty=1, lwd=0.5)
@@ -79,8 +81,7 @@ for (i in 1:N)
   )
 ```
 
-
-## Linear Regression
+### Linear Regression
 
 ```{r}
 m <- quap(
@@ -103,11 +104,78 @@ precis(m)
 
 \textit{We observe a $b$ value of 0.06 on average. This suggests that territory size has a very slightly positive effect on weight.}
 
+## Part b
+
 **b)** Regress weight on food availability. That is, construct a `quap` linear regression (`m1b`) to estimate the association of food availability and fox weight. _Before fitting the model_, standardize both `avgfood` and `weight` to have mean 0 and standard deviation 1.
+
+```{r}
+centered.d <- d
+centered.d$avgfood <- scale(centered.d$avgfood)
+centered.d$weight <- scale(centered.d$weight)
+```
 
 **Hint:** \textit{With standardized variables, regression slopes represent standardized effect sizes. A slope of 1.0 would indicate a perfect positive relationship, while slopes >2 would be implausibly large for most ecological relationships.}
 
+### Prior Prediction
+
+```{r}
+N <- 100
+# a is the intercept. This means a fox with avg food of 0 has this weight.
+#   Normally, it is not possible to have a negative weight but since our data
+#   is standardized we will assume a mean 0 and but use a smaller std of 0.5
+a <- rnorm(N, 0, 0.5)
+# b represents the rate of change of a fox's weight with respect to food access.
+#   Similarly to above, the rates being compared are standardized meaning, a
+#   rate of 1 or -1 means a 1:1 relationship. To not discount the possibility
+#   of a negative correlation, we will center our predicted prior on 0 with std
+#   of 0.5
+b <- rnorm(N, 0, 0.5)
+xbar <- mean(centered.d$avgfood)
+```
+```{r, echo=FALSE}
+# Plot the prior prediction
+plot(NULL,
+     xlim=range(centered.d$avgfood), ylim=c(-3, 3),
+     xlab="Average Food", ylab="Weight"
+)
+mtext("Prior Prediction")
+# Std 2.5
+abline(h=2.5, lty=2)
+# Std -2.5
+abline(h=-2.5, lty=2)
+# Graph all the lines
+for (i in 1:N) 
+  curve(
+    a[i] + b[i]*(x - xbar),
+    from=min(centered.d$avgfood),
+    to=max(centered.d$avgfood),
+    col=col.alpha("black", 0.2),
+    add=TRUE
+  )
+```
+
 Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
+
+\textit{In the above prior prediction, I used $a \sim Normal(0, 0.5)$ and $b \sim Normal(0, 0.5)$. I chose these values because our data is standardized. I used a std of 0.5 in the normal because I wanted to tighten the priors slightly from the standardized 1.}
+
+### Linear Regression
+
+```{r}
+m <- quap(
+  alist(
+    weight ~ dnorm(mu, sigma),
+    mu <- a + b * (area - xbar),
+    # Priors from earlier
+    a ~ dnorm(0, 0.5),
+    b ~ dnorm(0, 0.5),
+    sigma ~ dunif(0, 5)
+  ),
+  data=centered.d
+)
+```
+```{r, echo=FALSE}
+precis(m)
+```
 
 **c)** Now regress weight on _both_ territory size and weight. Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
 
