@@ -81,7 +81,10 @@ b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
-plot(NULL, xlim=range(d$A), ylim=c(-2.5, 2.5), xlab="Area sq-km", ylab="Weight")
+plot(NULL,
+     xlim=range(d$A), ylim=c(-2.5, 2.5),
+     xlab="Area sq-km (std)", ylab="Weight (std)"
+)
 mtext("Prior Prediction")
 # Graph all the lines
 for (i in 1:N) 
@@ -111,7 +114,7 @@ mA <- quap(
 )
 ```
 ```{r, echo=FALSE}
-precis(m)
+precis(mA)
 ```
 
 ### Simulate the Priors
@@ -122,7 +125,7 @@ prior <- extract.prior(mA)
 mu <- link(mA, post=prior, data=list(A=c(-2, 2)))
 plot(NULL, 
      xlim=c(-2, 2), ylim=c(-2, 2),
-     xlab="Area (std)", ylab="Weight (std)"
+     xlab="Area sq-km (std)", ylab="Weight (std)"
 )
 mtext("Prior Simulation")
 for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
@@ -136,7 +139,7 @@ mu <- link(mA, data=list(A=A.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
 # Plot raw data
-plot(W ~ A, data=d, col=rangi2, xlab="Area (std)", ylab="Weight (std)")
+plot(W ~ A, data=d, col=rangi2, xlab="Area sq-km (std)", ylab="Weight (std)")
 mtext("Posterior Prediction")
 # Plot MAP line
 lines(A.seq, mu.mean, lwd=2)
@@ -152,100 +155,94 @@ shade(mu.PI, A.seq)
 
 **b)** Regress weight on food availability. That is, construct a `quap` linear regression (`m1b`) to estimate the association of food availability and fox weight. _Before fitting the model_, standardize both `avgfood` and `weight` to have mean 0 and standard deviation 1.
 
-```{r}
-centered.d <- d
-centered.d$avgfood <- scale(centered.d$avgfood)
-centered.d$weight <- scale(centered.d$weight)
-```
-
 **Hint:** \textit{With standardized variables, regression slopes represent standardized effect sizes. A slope of 1.0 would indicate a perfect positive relationship, while slopes >2 would be implausibly large for most ecological relationships.}
 
-### Prior Prediction
+Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
+
+### Prior Predictive Simulation
 
 ```{r}
 N <- 100
-# a is the intercept. This means a fox with avg food of 0 has this weight.
-#   Normally, it is not possible to have a negative weight but since our data
-#   is standardized we will assume a mean 0 and but use a smaller std of 0.5
-a <- rnorm(N, 0, 0.5)
-# b represents the rate of change of a fox's weight with respect to food access.
-#   Similarly to above, the rates being compared are standardized meaning, a
-#   rate of 1 or -1 means a 1:1 relationship. To not discount the possibility
-#   of a negative correlation, we will center our predicted prior on 0 with std
-#   of 0.5
+# As our data is standardized, we would expect our intercept, a, to be very
+#   close to 0
+a <- rnorm(N, 0, 0.2)
+# b represents the rate of change between our observed and unobserved variables.
+#   A value of 1 implies that for every one sd of change in our observed var.
+#   there is 1 sd of change in our unobserved variables. We will choose a sd of
+#   0.5 since that means we expect most of these slopes to be in -1 < b < 1
 b <- rnorm(N, 0, 0.5)
-xbar <- mean(centered.d$avgfood)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
 plot(NULL,
-     xlim=range(centered.d$avgfood), ylim=c(-3, 3),
-     xlab="Average Food", ylab="Weight"
+     xlim=range(d$F), ylim=c(-2.5, 2.5),
+     xlab="Food Availability (std)", ylab="Weight (std)"
 )
 mtext("Prior Prediction")
-# Std 2.5
-abline(h=2.5, lty=2)
-# Std -2.5
-abline(h=-2.5, lty=2)
 # Graph all the lines
 for (i in 1:N) 
   curve(
-    a[i] + b[i]*(x - xbar),
-    from=min(centered.d$avgfood),
-    to=max(centered.d$avgfood),
+    a[i] + b[i]*x,
+    from=min(d$F),
+    to=max(d$F),
     col=col.alpha("black", 0.2),
     add=TRUE
   )
 ```
 
-Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
-
-\textit{In the above prior prediction, I used $a \sim Normal(0, 0.5)$ and $b \sim Normal(0, 0.5)$. I chose these values because our data is standardized. I used a std of 0.5 in the normal because I wanted to tighten the priors slightly from the standardized 1.}
-
 ### Linear Regression
 
 ```{r}
-m <- quap(
+mF <- quap(
   alist(
-    weight ~ dnorm(mu, sigma),
-    mu <- a + b * (avgfood - xbar),
+    W ~ dnorm(mu, sigma),
+    # data is standardized so no need to subtract xbar
+    mu <- a + b*F,
     # Priors from earlier
-    a ~ dnorm(0, 0.5),
+    a ~ dnorm(0, 0.2),
     b ~ dnorm(0, 0.5),
-    sigma ~ dunif(0, 5)
+    sigma ~ dexp(1)
   ),
-  data=centered.d
+  data=d
 )
 ```
 ```{r, echo=FALSE}
-precis(m)
+precis(mF)
 ```
 
-
-### Plot the Predictions
+### Simulate the Priors
 
 ```{r}
-# Adding mu uncertainty
-avgfood.seq <- seq(from=-2.5, to=2.5, by=0.05)
-mu <- link(m, data=data.frame(avgfood=avgfood.seq))
-mu.mean <- apply(mu, 2, mean)
-mu.PI <- apply(mu, 2, PI, prob=0.89)
-# Adding a prediction interval (prediction uncertainty due to std uncertainty)
-sim.weight <- sim(m, data=list(avgfood=avgfood.seq))
-weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
+set.seed(rseed)
+prior <- extract.prior(mF)
+mu <- link(mF, post=prior, data=list(F=c(-2, 2)))
+plot(NULL, 
+     xlim=c(-2, 2), ylim=c(-2, 2),
+     xlab="Food Availability (std)", ylab="Weight (std)"
+)
+mtext("Prior Simulation")
+for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
+```
 
+### Posterior Predictions
+
+```{r}
+F.seq <- seq(from=-3, to=3, length.out=N)
+mu <- link(mF, data=list(F=F.seq))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI)
 # Plot raw data
-plot(weight ~ avgfood, data=centered.d, col=col.alpha(rangi2, 0.7))
+plot(W ~ F, data=d, col=rangi2,
+     xlab="Food Availability (std)", ylab="Weight (std)"
+)
+mtext("Posterior Prediction")
 # Plot MAP line
-lines(avgfood.seq, mu.mean)
-# Plot HPDI region for line
-shade(mu.PI, avgfood.seq)
-# Plot PI region for simulated heights
-shade(weight.PI, avgfood.seq)
+lines(F.seq, mu.mean, lwd=2)
+# Plot HDPI region for line
+shade(mu.PI, F.seq)
 ```
 
 **c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
-
 
 
 # AI Declaration
