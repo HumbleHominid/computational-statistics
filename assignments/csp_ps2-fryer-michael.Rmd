@@ -30,7 +30,15 @@ str(d)
 
 Consider the following hypothesized causal relationship between **territory size** and **body weight** in foxes.
 
-> Daggity DAG
+```{r, fig.align="center"}
+fox_dag <- dagitty("dag {
+  A -> F
+  A -> W
+  F -> W
+}")
+coordinates(fox_dag) <- list(x=c(A=0, F=-0.5, W=0.5), y=c(A=0, F=1, W=1))
+drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c"), radius=4)
+```
 
 where $A$, $F$ and $W$ represent random variables `area` (territory size), `avgfood`, and `weight`, respectively.
 
@@ -100,6 +108,28 @@ m <- quap(
 precis(m)
 ```
 
+### Plot the Predictions
+
+```{r}
+# Adding mu uncertainty
+area.seq <- seq(from=0, to=5.5, by=0.05)
+mu <- link(m, data=data.frame(area=area.seq))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI, prob=0.89)
+# Adding a prediction interval (prediction uncertainty due to std uncertainty)
+sim.weight <- sim(m, data=list(area=area.seq))
+weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
+
+# Plot raw data
+plot(weight ~ area, data=d, col=col.alpha(rangi2, 0.7))
+# Plot MAP line
+lines(area.seq, mu.mean)
+# Plot HPDI region for line
+shade(mu.PI, area.seq)
+# Plot PI region for simulated heights
+shade(weight.PI, area.seq)
+```
+
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
 \textit{We observe a $b$ value of 0.06 on average. This suggests that territory size has a very slightly positive effect on weight.}
@@ -164,7 +194,7 @@ Use prior predictive simulation to assess the implication of your priors. Write 
 m <- quap(
   alist(
     weight ~ dnorm(mu, sigma),
-    mu <- a + b * (area - xbar),
+    mu <- a + b * (avgfood - xbar),
     # Priors from earlier
     a ~ dnorm(0, 0.5),
     b ~ dnorm(0, 0.5),
@@ -177,6 +207,31 @@ m <- quap(
 precis(m)
 ```
 
+
+### Plot the Predictions
+
+```{r}
+# Adding mu uncertainty
+avgfood.seq <- seq(from=-2.5, to=2.5, by=0.05)
+mu <- link(m, data=data.frame(avgfood=avgfood.seq))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI, prob=0.89)
+# Adding a prediction interval (prediction uncertainty due to std uncertainty)
+sim.weight <- sim(m, data=list(avgfood=avgfood.seq))
+weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
+
+# Plot raw data
+plot(weight ~ avgfood, data=centered.d, col=col.alpha(rangi2, 0.7))
+# Plot MAP line
+lines(avgfood.seq, mu.mean)
+# Plot HPDI region for line
+shade(mu.PI, avgfood.seq)
+# Plot PI region for simulated heights
+shade(weight.PI, avgfood.seq)
+```
+
 **c)** Now regress weight on _both_ territory size and weight. Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
+
+
 
 # AI Declaration
