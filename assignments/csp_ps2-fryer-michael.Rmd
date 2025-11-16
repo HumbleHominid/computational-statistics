@@ -57,7 +57,7 @@ d$F <- standardize(d$avgfood)
 d$W <- standardize(d$weight)
 ```
 
-## Part a
+## Part A
 
 **a)** According to the DAG, territory size effects weight through two paths:
 
@@ -104,10 +104,10 @@ mA <- quap(
   alist(
     W ~ dnorm(mu, sigma),
     # data is standardized so no need to subtract xbar
-    mu <- a + b*A,
+    mu <- a + bA*A,
     # Priors from earlier
     a ~ dnorm(0, 0.2),
-    b ~ dnorm(0, 0.5),
+    bA ~ dnorm(0, 0.5),
     sigma ~ dexp(1)
   ),
   data=d
@@ -123,6 +123,8 @@ precis(mA)
 set.seed(rseed)
 prior <- extract.prior(mA)
 mu <- link(mA, post=prior, data=list(A=c(-2, 2)))
+```
+```{r, echo=FALSE}
 plot(NULL, 
      xlim=c(-2, 2), ylim=c(-2, 2),
      xlab="Area sq-km (std)", ylab="Weight (std)"
@@ -138,6 +140,8 @@ A.seq <- seq(from=-3, to=3, length.out=N)
 mu <- link(mA, data=list(A=A.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
+```
+```{r, echo=FALSE}
 # Plot raw data
 plot(W ~ A, data=d, col=rangi2, xlab="Area sq-km (std)", ylab="Weight (std)")
 mtext("Posterior Prediction")
@@ -149,9 +153,9 @@ shade(mu.PI, A.seq)
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{AHHHHHHHHHHHHHH}
+\textit{We observe a MAP with a slope of roughly 0. This tells us that there is essentially no relation between territory size and weight.}
 
-## Part b
+## Part B
 
 **b)** Regress weight on food availability. That is, construct a `quap` linear regression (`m1b`) to estimate the association of food availability and fox weight. _Before fitting the model_, standardize both `avgfood` and `weight` to have mean 0 and standard deviation 1.
 
@@ -197,10 +201,10 @@ mF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
     # data is standardized so no need to subtract xbar
-    mu <- a + b*F,
+    mu <- a + bF*F,
     # Priors from earlier
     a ~ dnorm(0, 0.2),
-    b ~ dnorm(0, 0.5),
+    bF ~ dnorm(0, 0.5),
     sigma ~ dexp(1)
   ),
   data=d
@@ -216,6 +220,8 @@ precis(mF)
 set.seed(rseed)
 prior <- extract.prior(mF)
 mu <- link(mF, post=prior, data=list(F=c(-2, 2)))
+```
+```{r, echo=FALSE}
 plot(NULL, 
      xlim=c(-2, 2), ylim=c(-2, 2),
      xlab="Food Availability (std)", ylab="Weight (std)"
@@ -231,6 +237,8 @@ F.seq <- seq(from=-3, to=3, length.out=N)
 mu <- link(mF, data=list(F=F.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
+```
+```{r, echo=FALSE}
 # Plot raw data
 plot(W ~ F, data=d, col=rangi2,
      xlab="Food Availability (std)", ylab="Weight (std)"
@@ -242,7 +250,46 @@ lines(F.seq, mu.mean, lwd=2)
 shade(mu.PI, F.seq)
 ```
 
+## Part C
+
 **c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
+
+### Prior Predictive Simulation
+
+```{r}
+N <- 100
+# As our data is standardized, we would expect our intercept, a, to be very
+#   close to 0
+a <- rnorm(N, 0, 0.2)
+# bA from above
+bA <- rnorm(N, 0, 0.5)
+# bF from above
+bF <- rnorm(N, 0, 0.5)
+```
+
+### Linear Regression
+
+```{r}
+mAF <- quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    # data is standardized so no need to subtract xbar
+    mu <- a + bA*A + bF*F,
+    # Priors from earlier
+    a ~ dnorm(0, 0.2),
+    bA ~ dnorm(0, 0.5),
+    bF ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+```
+```{r, echo=FALSE}
+precis(mAF)
+```
+```{r, echo=FALSE}
+plot(coeftab(mA, mF, mAF), par=c("bA", "bF"))
+```
 
 
 # AI Declaration
