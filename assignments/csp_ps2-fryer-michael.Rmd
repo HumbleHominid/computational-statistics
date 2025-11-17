@@ -160,7 +160,7 @@ shade(weight.PI, A.seq)
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{We observe a MAP with a slope of about 0.02. This tells us that territory size gives very little information about weight.}
+\textit{With a mean of 0.02 and a standard deviation of 0.11 we observe neither a strong nor precise relationship, illustrated in the figure above. This analysis tells us that territory size gives very little information about weight.}
 
 ## Part B
 
@@ -189,7 +189,7 @@ b <- rnorm(N, 0, 0.5)
 # Plot the prior prediction
 plot(NULL,
      xlim=range(d$F), ylim=c(-2.5, 2.5),
-     xlab="Food Availability (std)", ylab="Weight (std)"
+     xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
 mtext("Prior Prediction")
 # Graph all the lines
@@ -234,7 +234,7 @@ mu <- link(mF, post=prior, data=list(F=c(-2, 2)))
 ```{r, echo=FALSE}
 plot(NULL, 
      xlim=c(-2, 2), ylim=c(-2, 2),
-     xlab="Food Availability (std)", ylab="Weight (std)"
+     xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
 mtext("Prior Simulation")
 for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
@@ -253,7 +253,7 @@ W.PI <- apply(sim.W, 2, PI, prob=0.89)
 ```{r, echo=FALSE}
 # Plot raw data
 plot(W ~ F, data=d, col=rangi2,
-     xlab="Food Availability (std)", ylab="Weight (std)"
+     xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
 mtext("Posterior Prediction")
 # Plot MAP line
@@ -264,7 +264,7 @@ shade(mu.PI, F.seq)
 shade(W.PI, F.seq)
 ```
 
-\textit{As with the previous part, the mean slope is near 0, -0.02, implying food availability gives little information about weight. It is notable that what little impact food availability does have on weight appears to be negative in our dataset.}
+\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, thi implies food availability gives little information about weight. It is notable that what little impact food availability does have on weight appears to be negative in our dataset.}
 
 ## Part C
 
@@ -329,7 +329,50 @@ plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
 ```
 
-\textit{In the above figure, we can see that $mA$ and $mF$ alone maintain a mean of approximately 0. Only when adding the other parameter do stray away from the mean and increase in standard deviation. This implies that considering both $mA$ and $mF$ at the same time produces more uncertainty that just considering one at a time. Additionally, when adding the second predictor, it appears to exacerbate the error. That is, the mean strays further from 0 in the direction of the error (positive or negative) and the standard deviation increases.}
+\textit{In the above figure, we can see that by incorporating both predictor variables, the posterior association of both with the outcome has increased. We also note, however, that the uncertainty has increases drastically. Observing results like this is a strong indicator of a potential masked relationship.}
+
+### Masked Relationship
+
+\textit{Although this is not part of the assignment, I will consider the following relationship for my own edification.}
+
+```{r, fig.align="center", echo=FALSE}
+fox_dag <- dagitty("dag {
+  U -> A
+  U -> F
+  A -> W
+  F -> W
+}")
+coordinates(fox_dag) <- list(x=c(U=0, A=-0.5, F=0.5, W=0), y=c(U=0, A=0, F=0, W=1))
+drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c", U="c"))
+```
+
+```{r}
+xseq <- seq(from=min(d$A)-0.15, to=max(d$A)+0.15, length.out=30)
+mu <- link(mAF, data=data.frame(A=xseq, F=0))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI)
+plot(NULL,
+     xlim=range(d$A), ylim=range(d$A),
+     xlab="Area sq-km (std)", ylab="Weight kg (std)"
+)
+mtext("Counterfactual holding F = 0")
+lines(xseq, mu.mean, lwd=2)
+shade(mu.PI, xseq)
+```
+
+```{r}
+xseq <- seq(from=min(d$F)-0.15, to=max(d$F)+0.15, length.out=30)
+mu <- link(mAF, data=data.frame(F=xseq, A=0))
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI)
+plot(NULL,
+     xlim=range(d$F), ylim=range(d$F),
+     xlab="Food Availability (std)", ylab="Weight kg (std)"
+)
+mtext("Counterfactual holding A = 0")
+lines(xseq, mu.mean, lwd=2)
+shade(mu.PI, xseq)
+```
 
 # AI Declaration
 
