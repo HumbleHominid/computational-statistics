@@ -160,7 +160,7 @@ shade(weight.PI, A.seq)
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{With a mean of 0.02 and a standard deviation of 0.11 we observe neither a strong nor precise relationship, illustrated in the figure above. This analysis tells us that territory size gives very little information about weight.}
+\textit{With a mean of 0.02 and a standard deviation of 0.11 we observe neither a strong nor precise relationship, illustrated in the figure above. While the slope is positive, this analysis tells us that territory size gives very little information about weight.}
 
 ## Part B
 
@@ -264,7 +264,7 @@ shade(mu.PI, F.seq)
 shade(W.PI, F.seq)
 ```
 
-\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, thi implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
+\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, this implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
 
 ## Part C
 
