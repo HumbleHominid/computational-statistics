@@ -72,12 +72,13 @@ If we regress weight on territory size without including food, the coefficient s
 
 ```{r}
 N <- 100
-# If our prediction variable is not a factor, we would expect our intercept
-#   to be near the average weight of 5kg. 0.75 represents 15% of the average.
+# If our prediction variable is not a factor, mean 0, we would expect the
+#   predicted weight to be 5kg. A std of 0.75 is chosen as that represents
+#   15% of the mean
 a <- rnorm(N, 5, 0.75)
-# b represents the rate of change between our observed and unobserved variables.
-#   A value of 1 implies that for every one sd of change in our observed
-#   variable there is 1kg of change in our predicted variable
+# b represents the rate of change between our predictor and prediction variables.
+#   A value of 1 implies that for every one sd of change in our predictor
+#   variable there is 1kg of change in our prediction variable
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
@@ -178,9 +179,9 @@ N <- 100
 # As our data is standardized, we would expect our intercept, a, to be very
 #   close to 0
 a <- rnorm(N, 0, 0.2)
-# b represents the rate of change between our observed and unobserved variables.
-#   A value of 1 implies that for every one sd of change in our observed var.
-#   there is 1 sd of change in our unobserved variables. We will choose a sd of
+# b represents the rate of change between our predictor and prediction variables.
+#   A value of 1 implies that for every one sd of change in our predictor var.
+#   there is 1 sd of change in our prediction variables. We will choose a sd of
 #   0.5 since that means we expect most of these slopes to be in -1 < b < 1
 b <- rnorm(N, 0, 0.5)
 ```
@@ -263,7 +264,7 @@ shade(mu.PI, F.seq)
 shade(W.PI, F.seq)
 ```
 
-\textit{As with the previous part, the mean slope is near 0 implying food availability gives little information about weight. It is notable that what little impact food availability does has on weight appears to be negative in our dataset.}
+\textit{As with the previous part, the mean slope is near 0, -0.02, implying food availability gives little information about weight. It is notable that what little impact food availability does have on weight appears to be negative in our dataset.}
 
 ## Part C
 
@@ -278,7 +279,7 @@ N <- 100
 # As our data is standardized, we would expect our intercept, a, to be very
 #   close to 0
 a <- rnorm(N, 0, 0.2)
-# bA from above
+# Using the same mean and sd for bA as bF.
 bA <- rnorm(N, 0, 0.5)
 # bF from above
 bF <- rnorm(N, 0, 0.5)
@@ -328,7 +329,7 @@ plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
 ```
 
-\textit{In the above figure, we can see that $mA$ and $mF$ alone maintain a mean of approximately 0. Only when adding the other parameter do stray away from the mean and increase in standard deviation. This implies that considering both $mA$ and $mF$ at the same time produces more uncertainty that just considering one at a time.}
+\textit{In the above figure, we can see that $mA$ and $mF$ alone maintain a mean of approximately 0. Only when adding the other parameter do stray away from the mean and increase in standard deviation. This implies that considering both $mA$ and $mF$ at the same time produces more uncertainty that just considering one at a time. Additionally, when adding the second predictor, it appears to exacerbate the error. That is, the mean strays further from 0 in the direction of the error (positive or negative) and the standard deviation increases.}
 
 # AI Declaration
 
