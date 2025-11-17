@@ -1,7 +1,7 @@
 ---
 title: "Problem Set 2"
 author: "Michael Fryer"
-date: "`r Sys.Date()`"
+date: "Collaborators: Florian Robrecht"
 output:
  pdf_document:
    number_sections: true
@@ -66,29 +66,31 @@ d$W <- standardize(d$weight)
 
 If we regress weight on territory size without including food, the coefficient should capture both pathways, the "total association" between $A$ and $W$. Construct a linear regression (`m1a`) using `quap`. Urban foxes in this population have an average weight of 5kg. Use prior predictive simulation to assess the implications of your priors. Standardize the prediction variable.
 
+\textit{Based on above, I am assuming that only the prediction variable, area, should be standardized for this model.}
+
 ### Prior Predictive Simulation
 
 ```{r}
 N <- 100
-# As our data is standardized, we would expect our intercept, a, to be very
-#   close to 0
-a <- rnorm(N, 0, 0.2)
+# If our prediction variable is not a factor, we would expect our intercept
+#   to be near the average weight of 5kg. 0.75 represents 15% of the average.
+a <- rnorm(N, 5, 0.75)
 # b represents the rate of change between our observed and unobserved variables.
-#   A value of 1 implies that for every one sd of change in our observed var.
-#   there is 1 sd of change in our unobserved variables. We will choose a sd of
-#   0.5 since that means we expect most of these slopes to be in -1 < b < 1
+#   A value of 1 implies that for every one sd of change in our observed
+#   variable there is 1kg of change in our predicted variable
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
 # Plot the prior prediction
 plot(NULL,
-     xlim=range(d$A), ylim=c(-2.5, 2.5),
-     xlab="Area sq-km (std)", ylab="Weight (std)"
+     xlim=range(d$A), ylim=c(0, 10),
+     xlab="Area sq-km (std)", ylab="Weight kg"
 )
 mtext("Prior Prediction")
 # Graph all the lines
 for (i in 1:N) 
   curve(
+    # No need to subtract xbar as our predictor is standardized
     a[i] + b[i]*x,
     from=min(d$A),
     to=max(d$A),
@@ -100,34 +102,34 @@ for (i in 1:N)
 ### Linear Regression
 
 ```{r}
-mA <- quap(
+m <- quap(
   alist(
-    W ~ dnorm(mu, sigma),
-    # data is standardized so no need to subtract xbar
-    mu <- a + bA*A,
+    weight ~ dnorm(mu, sigma),
+    # No need to subtract mean as our predictor is standardized
+    mu <- a + b*A,
     # Priors from earlier
-    a ~ dnorm(0, 0.2),
-    bA ~ dnorm(0, 0.5),
+    a ~ dnorm(5, 0.75),
+    b ~ dnorm(0, 0.5),
     sigma ~ dexp(1)
   ),
   data=d
 )
 ```
 ```{r, echo=FALSE}
-precis(mA)
+precis(m)
 ```
 
 ### Simulate the Priors
 
 ```{r}
 set.seed(rseed)
-prior <- extract.prior(mA)
-mu <- link(mA, post=prior, data=list(A=c(-2, 2)))
+prior <- extract.prior(m)
+mu <- link(m, post=prior, data=list(A=c(-2, 2)))
 ```
 ```{r, echo=FALSE}
 plot(NULL, 
-     xlim=c(-2, 2), ylim=c(-2, 2),
-     xlab="Area sq-km (std)", ylab="Weight (std)"
+     xlim=c(-2, 2), ylim=c(0, 10),
+     xlab="Area sq-km (std)", ylab="Weight kg"
 )
 mtext("Prior Simulation")
 for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
@@ -137,23 +139,27 @@ for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
 
 ```{r}
 A.seq <- seq(from=-3, to=3, length.out=N)
-mu <- link(mA, data=list(A=A.seq))
+mu <- link(m, data=list(A=A.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
+sim.weight <- sim(m, data=list(A=A.seq))
+weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
 ```
 ```{r, echo=FALSE}
 # Plot raw data
-plot(W ~ A, data=d, col=rangi2, xlab="Area sq-km (std)", ylab="Weight (std)")
+plot(weight ~ A, data=d, col=rangi2, xlab="Area sq-km (std)", ylab="Weight kg")
 mtext("Posterior Prediction")
 # Plot MAP line
 lines(A.seq, mu.mean, lwd=2)
 # Plot HDPI region for line
 shade(mu.PI, A.seq)
+# Plot PI region for simulated weights
+shade(weight.PI, A.seq)
 ```
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{We observe a MAP with a slope of roughly 0. This tells us that there is essentially no relation between territory size and weight.}
+\textit{We observe a MAP with a slope of about 0.02. This tells us that territory size gives very little information about weight.}
 
 ## Part B
 
@@ -162,6 +168,8 @@ shade(mu.PI, A.seq)
 **Hint:** \textit{With standardized variables, regression slopes represent standardized effect sizes. A slope of 1.0 would indicate a perfect positive relationship, while slopes >2 would be implausibly large for most ecological relationships.}
 
 Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
+
+\textit{Since both our predictor and prediction variable are standardized, we will simulate priors with mean 0 and a small standard deviation. For our slope pior, b, a value of 1 represents a change of one standard deviation in our predicted variable for 1 standard deviation of change in our predictor variable.}
 
 ### Prior Predictive Simulation
 
@@ -186,6 +194,7 @@ mtext("Prior Prediction")
 # Graph all the lines
 for (i in 1:N) 
   curve(
+    # No need to subtract xbar as our predictor is standardized
     a[i] + b[i]*x,
     from=min(d$F),
     to=max(d$F),
@@ -200,7 +209,7 @@ for (i in 1:N)
 mF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
-    # data is standardized so no need to subtract xbar
+    # No need to subtract mean as our predictor is standardized
     mu <- a + bF*F,
     # Priors from earlier
     a ~ dnorm(0, 0.2),
@@ -237,6 +246,8 @@ F.seq <- seq(from=-3, to=3, length.out=N)
 mu <- link(mF, data=list(F=F.seq))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
+sim.W <- sim(mF, data=list(F=F.seq))
+W.PI <- apply(sim.W, 2, PI, prob=0.89)
 ```
 ```{r, echo=FALSE}
 # Plot raw data
@@ -248,11 +259,17 @@ mtext("Posterior Prediction")
 lines(F.seq, mu.mean, lwd=2)
 # Plot HDPI region for line
 shade(mu.PI, F.seq)
+# Plot PI region for simulated W's
+shade(W.PI, F.seq)
 ```
+
+\textit{As with the previous part, the mean slope is near 0 implying food availability gives little information about weight. It is notable that what little impact food availability does has on weight appears to be negative in our dataset.}
 
 ## Part C
 
 **c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
+
+\textit{In the below analysis, I will standardize both the prediction variables and the predictor variable. This is done so we can accurately compare the models to one another.}
 
 ### Prior Predictive Simulation
 
@@ -270,10 +287,25 @@ bF <- rnorm(N, 0, 0.5)
 ### Linear Regression
 
 ```{r}
+# Area predictor with standardized weight
+mA <- quap(
+  alist(
+    W ~ dnorm(mu, sigma),
+    # No need to subtract mean as our predictor is standardized
+    mu <- a + bA*A,
+    # Priors from earlier
+    a ~ dnorm(0, 0.2),
+    bA ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+# Food availability predictor reused from above
+# Both predictors with standardized weight
 mAF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
-    # data is standardized so no need to subtract xbar
+    # No need to subtract mean as our predictor is standardized
     mu <- a + bA*A + bF*F,
     # Priors from earlier
     a ~ dnorm(0, 0.2),
@@ -284,12 +316,20 @@ mAF <- quap(
   data=d
 )
 ```
+\newpage
 ```{r, echo=FALSE}
+cat("Standardized Area Predictors:")
+precis(mA)
+cat("Standardized Area and Food Availability Predictors:")
 precis(mAF)
 ```
 ```{r, echo=FALSE}
-plot(coeftab(mA, mF, mAF), par=c("bA", "bF"))
+plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
+mtext("Posterior Coefficient Table")
 ```
 
+\textit{In the above figure, we can see that $mA$ and $mF$ alone maintain a mean of approximately 0. Only when adding the other parameter do stray away from the mean and increase in standard deviation. This implies that considering both $mA$ and $mF$ at the same time produces more uncertainty that just considering one at a time.}
 
 # AI Declaration
+
+AI was not used for this assignment.
