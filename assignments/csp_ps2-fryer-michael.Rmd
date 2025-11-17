@@ -38,7 +38,7 @@ fox_dag <- dagitty("dag {
   F -> W
 }")
 coordinates(fox_dag) <- list(x=c(A=0, F=-0.5, W=0.5), y=c(A=0, F=1, W=1))
-drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c"))
+drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1))
 ```
 
 where $A$, $F$ and $W$ represent random variables `area` (territory size), `avgfood`, and `weight`, respectively.
@@ -170,7 +170,7 @@ shade(weight.PI, A.seq)
 
 Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
 
-\textit{Since both our predictor and prediction variable are standardized, we will simulate priors with mean 0 and a small standard deviation. For our slope pior, b, a value of 1 represents a change of one standard deviation in our predicted variable for 1 standard deviation of change in our predictor variable.}
+\textit{Since both our predictor and prediction variable are standardized, we will simulate priors with mean 0 and a small standard deviation. For our slope pior, b, a value of 1 represents a change of 1 standard deviation in our predicted variable for 1 standard deviation of change in our predictor variable.}
 
 ### Prior Predictive Simulation
 
@@ -264,26 +264,13 @@ shade(mu.PI, F.seq)
 shade(W.PI, F.seq)
 ```
 
-\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, thi implies food availability gives little information about weight. It is notable that what little impact food availability does have on weight appears to be negative in our dataset.}
+\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, thi implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
 
 ## Part C
 
 **c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
 
 \textit{In the below analysis, I will standardize both the prediction variables and the predictor variable. This is done so we can accurately compare the models to one another.}
-
-### Prior Predictive Simulation
-
-```{r}
-N <- 100
-# As our data is standardized, we would expect our intercept, a, to be very
-#   close to 0
-a <- rnorm(N, 0, 0.2)
-# Using the same mean and sd for bA as bF.
-bA <- rnorm(N, 0, 0.5)
-# bF from above
-bF <- rnorm(N, 0, 0.5)
-```
 
 ### Linear Regression
 
@@ -317,7 +304,7 @@ mAF <- quap(
   data=d
 )
 ```
-\newpage
+
 ```{r, echo=FALSE}
 cat("Standardized Area Predictors:")
 precis(mA)
@@ -329,9 +316,9 @@ plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
 ```
 
-\textit{In the above figure, we can see that by incorporating both predictor variables, the posterior association of both with the outcome has increased. We also note, however, that the uncertainty has increases drastically. Observing results like this is a strong indicator of a potential masked relationship.}
+\textit{In the above figure, we can see that $A$ and $F$ are each more correlated with $W$ in the combined model, $mAF$ than in either of the bivariate models $mA$ and $mF$. However, we also note that the uncertainty, standard deviation, has increased drastically. Observing results like this is a strong indicator of a potential masked relationship.}
 
-### Masked Relationship
+## Masked Relationship
 
 \textit{Although this is not part of the assignment, I will consider the following relationship for my own edification.}
 
@@ -342,13 +329,23 @@ fox_dag <- dagitty("dag {
   A -> W
   F -> W
 }")
-coordinates(fox_dag) <- list(x=c(U=0, A=-0.5, F=0.5, W=0), y=c(U=0, A=0, F=0, W=1))
-drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(A="c", F="c", U="c"))
+coordinates(fox_dag) <- list(x=c(U=0, A=-0.25, F=0.25, W=0), y=c(U=0, A=0.5, F=0.5, W=1))
+drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(U="c"))
 ```
 
+\textit{From a simple pairs plot, we can see that $A$ and $F$ are positively correlated with one another. The result of this pattern is that the two predictors tend to cancel eachother out.}
+
+```{r, echo=FALSE}
+pairs(~W + A + F, d, lower.panel=NULL)
+```
+
+### Counterfactuals
+
+\textit{Going of the assumption that the above DAG is accurate, we will simulate breaking the links from $U \rightarrow A$ and $U \rightarrow F$ by producting counterfactual plots wherin one predictor is held at 0.}
+
 ```{r}
-xseq <- seq(from=min(d$A)-0.15, to=max(d$A)+0.15, length.out=30)
-mu <- link(mAF, data=data.frame(A=xseq, F=0))
+x.seq <- seq(from=min(d$A) - 0.15, to=max(d$A) + 0.15, length.out=30)
+mu <- link(mAF, data=data.frame(A=x.seq, F=0))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
 plot(NULL,
@@ -356,13 +353,13 @@ plot(NULL,
      xlab="Area sq-km (std)", ylab="Weight kg (std)"
 )
 mtext("Counterfactual holding F = 0")
-lines(xseq, mu.mean, lwd=2)
-shade(mu.PI, xseq)
+lines(x.seq, mu.mean, lwd=2)
+shade(mu.PI, x.seq)
 ```
 
 ```{r}
-xseq <- seq(from=min(d$F)-0.15, to=max(d$F)+0.15, length.out=30)
-mu <- link(mAF, data=data.frame(F=xseq, A=0))
+x.seq <- seq(from=min(d$F) - 0.15, to=max(d$F) + 0.15, length.out=30)
+mu <- link(mAF, data=data.frame(F=x.seq, A=0))
 mu.mean <- apply(mu, 2, mean)
 mu.PI <- apply(mu, 2, PI)
 plot(NULL,
@@ -370,9 +367,11 @@ plot(NULL,
      xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
 mtext("Counterfactual holding A = 0")
-lines(xseq, mu.mean, lwd=2)
-shade(mu.PI, xseq)
+lines(x.seq, mu.mean, lwd=2)
+shade(mu.PI, x.seq)
 ```
+
+\textit{Although we can't be sure that this DAG wholly represents this data, in fact there are many DAGs that fit this data, we can see that the DAG(U, A, F, W) fits this observed data. That is, there is likely some unobserved $U$ that is a common cause of $M$ and $N$.}
 
 # AI Declaration
 
