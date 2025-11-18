@@ -1,7 +1,7 @@
 ---
 title: "Problem Set 2"
 author: "Michael Fryer"
-date: "Collaborators: Florian Robrecht, Janin Janokawski"
+date: "Collaborators: Florian Robrecht"
 output:
  pdf_document:
    number_sections: true
@@ -13,7 +13,7 @@ library(rethinking)
 library(dagitty)
 ```
 
-For this assignment, I collaborated with Florian and Janin by discussion our independent solutions.
+For this assignment, I collaborated with Florian and discussed our independent solutions.
 
 # Multiple Regression & Causal Models
 The `foxes` dataset contains data on urban fox populations.
@@ -33,7 +33,10 @@ str(d)
 
 Consider the following hypothesized causal relationship between **territory size** and **body weight** in foxes.
 
-```{r, fig.align="center", echo=FALSE}
+```{r dag, fig.align="center", echo=FALSE}
+############
+# Plot a DAG
+############
 fox_dag <- dagitty("dag {
   A -> F
   A -> W
@@ -41,6 +44,7 @@ fox_dag <- dagitty("dag {
 }")
 coordinates(fox_dag) <- list(x=c(A=0, F=-0.5, W=0.5), y=c(A=0, F=1, W=1))
 drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1))
+
 ```
 
 where $A$, $F$ and $W$ represent random variables `area` (territory size), `avgfood`, and `weight`, respectively.
@@ -59,6 +63,9 @@ d$F <- standardize(d$avgfood)
 d$W <- standardize(d$weight)
 ```
 ```{r plots, echo=FALSE}
+##############
+# Plot Helpers
+##############
 # Plots a standardized predictor x
 plot_prior_prediction <- function(x, ylim, xlab, ylab) {
   plot(NULL, xlim=range(x), ylim=ylim, xlab=xlab, ylab=ylab)
@@ -105,6 +112,7 @@ plot_posterior_prediction <- function(d, m, dist, predictor, xlab, ylab) {
   # Plot PI region for simulated weights
   shade(val.PI, x.seq)
 }
+
 ```
 
 
@@ -121,23 +129,24 @@ If we regress weight on territory size without including food, the coefficient s
 
 ### Prior Predictive Simulation
 
-\textbf{A note on priors:} \textit{For this model with a standardized predictor, the value of $a$ represents our expected weight when the predictor $A = 0$. Since we are told weigh 5kg on average in this population, we will create a normal distribution with $\mu = 5$ and $\sigma = 0.75$ which represents 15\% of the mean. The value of $b$ represents the rate of change between our predictor and outcome variables. A value of 1 implies that for every 1 standard deviation of change in our prediction variable, there is 1kg of change in our outcome variable. For this model, I will be using a normal distribution with $\mu = 0$ and $\sigma = 0.5$.}
+\textbf{A note on priors:} \textit{For this model with a standardized predictor, the value of $a$ represents our expected weight when the predictor $A = 0$. Since we are told foxes weigh 5kg on average in this population, we will create a normal distribution with $\mu = 5$ and $\sigma = 0.75$ which represents 15\% of the mean. It is valid to use $\mu = 5$ here as 5kg is a population statistic. The value of $b$ represents the rate of change between our predictor and outcome variables. A value of 1 implies that for every 1 standard deviation of change in our prediction variable, there is 1kg of change in our outcome variable. For this model, I will be using a normal distribution with $\mu = 0$ and $\sigma = 0.5$.}
 
 ```{r}
 N <- 100
 a <- rnorm(N, 5, 0.75)
 b <- rnorm(N, 0, 0.5)
 ```
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align="center"}
 plot_prior_prediction(
   x=d$A, ylim=c(0, 10),
   xlab="Area sq-km (std)", ylab="Weight kg"
 )
 ```
-
+\newpage
 ### Linear Regression
 
 ```{r}
+set.seed(rseed)
 m <- quap(
   alist(
     weight ~ dnorm(mu, sigma),
@@ -157,7 +166,7 @@ precis(m)
 
 ### Posterior Predictions
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,fig.width=10}
 par(mfrow = c(1, 2))
 plot_posterior_samples(m=m,
   x=d$A, y=d$weight,
@@ -169,7 +178,7 @@ par(mfrow = c(1, 1))
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{With $\mu = 0.02$ and $\sigma = 0.11$ we observe neither a strong nor precise relationship between these two variables, illustrated in the figure above. While the slope is positive, this analysis tells us that territory size gives very little information about weight.}
+\textit{We did a good job with prior prediction of $a$ as we observe $\mu = 4.54$. With $b$ we observe $\mu = 0.02$ and $\sigma = 0.11$ we observe neither a strong nor precise relationship between these two variables, illustrated in the figures above. While the slope is positive, this analysis tells us that territory size gives very little information about weight.}
 
 ## Part B
 
@@ -179,7 +188,7 @@ par(mfrow = c(1, 1))
 
 Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
 
-\textbf{A note on priors:} \textit{Since both our predictor and outcome variables are standardized, we will simulate priors with $\mu = 0$ and a small standard deviation. For our intercept prior, $a$, we will use $\sigma = 0.2$ as we expect our data to be tight around the mean. For our slope prior, $b$, we will use $\sigma = 0.5$ as we expect most slopes to be in $-1 < b < 1$.}
+\textbf{A note on priors:} \textit{Since both our predictor and outcome variables are standardized, we will simulate priors with $\mu = 0$ and a small standard deviation. For our intercept prior, $a$, we will use $\sigma = 0.2$ as we expect our data to be relatively tight around the mean. For our slope prior, $b$, we will use $\sigma = 0.5$ as we expect most slopes to be in $-1 < b < 1$.}
 
 ### Prior Predictive Simulation
 
@@ -188,7 +197,7 @@ N <- 100
 a <- rnorm(N, 0, 0.2)
 b <- rnorm(N, 0, 0.5)
 ```
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align="center"}
 plot_prior_prediction(
   x=d$F, ylim=c(-2.5, 2.5),
   xlab="Food Availability (std)", ylab="Weight kg (std)"
@@ -198,6 +207,7 @@ plot_prior_prediction(
 ### Linear Regression
 
 ```{r}
+set.seed(rseed)
 mF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
@@ -211,12 +221,13 @@ mF <- quap(
   data=d
 )
 ```
+\newpage
 ```{r, echo=FALSE}
 precis(mF)
 ```
 
 ### Posterior Predictions
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.width=10}
 par(mfrow = c(1, 2))
 plot_posterior_samples(m=mF,
   x=d$A, y=d$W,
@@ -238,6 +249,7 @@ par(mfrow = c(1, 1))
 
 ```{r}
 # Area predictor with standardized weight
+set.seed(rseed)
 mA <- quap(
   alist(
     W ~ dnorm(mu, sigma),
@@ -249,7 +261,11 @@ mA <- quap(
   data=d
 )
 # Food availability predictor reused from above
+```
+\newpage
+```{r}
 # Both predictors with standardized weight
+set.seed(rseed)
 mAF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
@@ -269,7 +285,7 @@ cat("Standardized Area and Food Availability Predictors:")
 precis(mAF)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align="center"}
 plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
 ```
@@ -280,7 +296,10 @@ mtext("Posterior Coefficient Table")
 
 \textit{Although this is not part of the assignment, I will consider the following relationship for my own edification.}
 
-```{r, fig.align="center", echo=FALSE}
+```{r dag-unobserved, fig.align="center", echo=FALSE}
+#####################
+# Plot an updated DAG
+#####################
 fox_dag <- dagitty("dag {
   U -> A
   U -> F
@@ -289,22 +308,24 @@ fox_dag <- dagitty("dag {
 }")
 coordinates(fox_dag) <- list(x=c(U=0, A=-0.25, F=0.25, W=0), y=c(U=0, A=0.5, F=0.5, W=1))
 drawdag(fox_dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(U="c"))
+
 ```
 
 \textit{From a simple pairs plot, we can see that $A$ and $F$ are positively correlated with one another. The result of this pattern is that the two predictors tend to cancel eachother out.}
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align="center"}
 pairs(~W + A + F, d, lower.panel=NULL)
 ```
-
+\newpage
 ### Counterfactuals
 
 \textit{Going of the assumption that the above DAG is accurate, we will simulate breaking the links from $U \rightarrow A$ and $U \rightarrow F$ by producting counterfactual plots wherin one predictor is held at 0.}
 
-```{r, echo=FALSE}
+```{r counterfactual, echo=FALSE, fig.width=10}
+######################
+# Plot counterfactuals
+######################
 par(mfrow = c(1, 2))
-```
-```{r}
 # Counterfactual holding F=0
 x.seq <- seq(from=min(d$A) - 0.15, to=max(d$A) + 0.15, length.out=30)
 mu <- link(mAF, data=data.frame(A=x.seq, F=0))
@@ -329,14 +350,19 @@ plot(NULL,
 mtext("Counterfactual holding A = 0")
 lines(x.seq, mu.mean, lwd=2)
 shade(mu.PI, x.seq)
-```
-```{r, echo=FALSE}
 par(mfrow = c(1, 1))
+
 ```
 
 
-\textit{Although we can't be sure that this DAG wholly represents this data, in fact there are many DAGs that fit this data, we can see that the DAG(U, A, F, W) fits this observed data. That is, there is likely some unobserved $U$ that is a common cause of $M$ and $N$.}
+\textit{Although we can't be sure that this DAG wholly represents this data, in fact there are many DAGs that fit this data, we can see that the DAG(U, A, F, W) fits this observed data. That is, there is likely some unobserved $U$ that is a common cause of $A$ and $F$.}
 
 # AI Declaration
 
 AI was not used for this assignment.
+
+\newpage
+# Appendix
+
+```{r, ref.label=c("dag", "dag-unobserved", "plots", "counterfactual"), eval=FALSE}
+```
