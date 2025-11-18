@@ -58,6 +58,55 @@ d$A <- standardize(d$area)
 d$F <- standardize(d$avgfood)
 d$W <- standardize(d$weight)
 ```
+```{r plots, echo=FALSE}
+# Plots a standardized predictor x
+plot_prior_prediction <- function(x, ylim, xlab, ylab) {
+  plot(NULL, xlim=range(x), ylim=ylim, xlab=xlab, ylab=ylab)
+  mtext("Prior Prediction")
+  # Graph all the lines
+  for (i in 1:N) {
+    curve(a[i] + b[i]*x,
+      from=min(x), to=max(x),
+      col=col.alpha("black", 0.2), add=TRUE
+    )
+  }
+}
+# Plots a subset of the predictions from the posterior
+plot_posterior_samples <- function(m, x, y, xlab, ylab) {
+  post <- extract.samples(m, n=20)
+  plot <- plot(x, y,
+    xlim=range(x), ylim=range(y),
+    xlab=xlab, ylab=ylab,
+    col=rangi2
+  )
+  mtext("Posterior Regressor Samples")
+  for (i in 1:nrow(post)) {
+    curve(post$a[i] + post$b[i]*x, col=col.alpha("black", 0.3), add=TRUE)
+  }
+}
+# Plots the posterior prediction for a standardized predictor
+plot_posterior_prediction <- function(d, m, dist, predictor, xlab, ylab) {
+  # Compute all the posterior prediction information
+  data <- list()
+  x.seq <- seq(from=-3, to=3, length.out=N)
+  data[[predictor]] <- x.seq
+  mu <- link(m, data=data)
+  mu.mean <- apply(mu, 2, mean)
+  mu.PI <- apply(mu, 2, PI)
+  sim.val <- sim(m, data=data)
+  val.PI <- apply(sim.val, 2, PI, prob=0.89)
+  # Plot raw data
+  plot(dist, data=d, col=rangi2, xlab=xlab, ylab=ylab)
+  mtext("Posterior Prediction")
+  # Plot MAP line
+  lines(x.seq, mu.mean, lwd=2)
+  # Plot HDPI region for line
+  shade(mu.PI, x.seq)
+  # Plot PI region for simulated weights
+  shade(val.PI, x.seq)
+}
+```
+
 
 ## Part A
 
@@ -80,22 +129,10 @@ a <- rnorm(N, 5, 0.75)
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
-# Plot the prior prediction
-plot(NULL,
-     xlim=range(d$A), ylim=c(0, 10),
-     xlab="Area sq-km (std)", ylab="Weight kg"
+plot_prior_prediction(
+  x=d$A, ylim=c(0, 10),
+  xlab="Area sq-km (std)", ylab="Weight kg"
 )
-mtext("Prior Prediction")
-# Graph all the lines
-for (i in 1:N) 
-  curve(
-    # No need to subtract xbar as our predictor is standardized
-    a[i] + b[i]*x,
-    from=min(d$A),
-    to=max(d$A),
-    col=col.alpha("black", 0.2),
-    add=TRUE
-  )
 ```
 
 ### Linear Regression
@@ -120,40 +157,14 @@ precis(m)
 
 ### Posterior Predictions
 
-```{r}
-set.seed(rseed)
-post <- extract.samples(m, n=20)
-```
 ```{r, echo=FALSE}
-plot <- plot(d$A, d$weight,
-  xlim=range(d$A), ylim=range(d$weight),
-  xlab="Area sq-km (std)", ylab="Weight kg",
-  col=rangi2
+par(mfrow = c(1, 2))
+plot_posterior_samples(m=m,
+  x=d$A, y=d$weight,
+  xlab="Area sq-km (std)", ylab="Weight kg"
 )
-mtext("Posterior Regressor Samples")
-for (i in 1:nrow(post)) {
-  curve(post$a[i] + post$b[i]*x, col=col.alpha("black", 0.3), add=TRUE)
-}
-```
-
-```{r}
-A.seq <- seq(from=-3, to=3, length.out=N)
-mu <- link(m, data=list(A=A.seq))
-mu.mean <- apply(mu, 2, mean)
-mu.PI <- apply(mu, 2, PI)
-sim.weight <- sim(m, data=list(A=A.seq))
-weight.PI <- apply(sim.weight, 2, PI, prob=0.89)
-```
-```{r, echo=FALSE}
-# Plot raw data
-plot(weight ~ A, data=d, col=rangi2, xlab="Area sq-km (std)", ylab="Weight kg")
-mtext("Posterior Prediction")
-# Plot MAP line
-lines(A.seq, mu.mean, lwd=2)
-# Plot HDPI region for line
-shade(mu.PI, A.seq)
-# Plot PI region for simulated weights
-shade(weight.PI, A.seq)
+plot_posterior_prediction(d, m, weight ~ A, "A", "Area sq-km (std)", "Weight kg")
+par(mfrow = c(1, 1))
 ```
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
@@ -178,22 +189,10 @@ a <- rnorm(N, 0, 0.2)
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
-# Plot the prior prediction
-plot(NULL,
-     xlim=range(d$F), ylim=c(-2.5, 2.5),
-     xlab="Food Availability (std)", ylab="Weight kg (std)"
+plot_prior_prediction(
+  x=d$F, ylim=c(-2.5, 2.5),
+  xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
-mtext("Prior Prediction")
-# Graph all the lines
-for (i in 1:N) 
-  curve(
-    # No need to subtract xbar as our predictor is standardized
-    a[i] + b[i]*x,
-    from=min(d$F),
-    to=max(d$F),
-    col=col.alpha("black", 0.2),
-    add=TRUE
-  )
 ```
 
 ### Linear Regression
@@ -216,45 +215,15 @@ mF <- quap(
 precis(mF)
 ```
 
-
 ### Posterior Predictions
-
-```{r}
-set.seed(rseed)
-post <- extract.samples(mF, n=20)
-```
 ```{r, echo=FALSE}
-plot <- plot(d$A, d$W,
-  xlim=range(d$A), ylim=range(d$W),
-  xlab="Araea sq-km (std)", ylab="Weight kg (std)",
-  col=rangi2
+par(mfrow = c(1, 2))
+plot_posterior_samples(m=mF,
+  x=d$A, y=d$W,
+  xlab="Food Availability (std)", ylab="Weight kg (std)"
 )
-mtext("Posterior Regressor Samples")
-for (i in 1:nrow(post)) {
-  curve(post$a[i] + post$b[i]*x, col=col.alpha("black", 0.3), add=TRUE)
-}
-```
-
-```{r}
-F.seq <- seq(from=-3, to=3, length.out=N)
-mu <- link(mF, data=list(F=F.seq))
-mu.mean <- apply(mu, 2, mean)
-mu.PI <- apply(mu, 2, PI)
-sim.W <- sim(mF, data=list(F=F.seq))
-W.PI <- apply(sim.W, 2, PI, prob=0.89)
-```
-```{r, echo=FALSE}
-# Plot raw data
-plot(W ~ F, data=d, col=rangi2,
-     xlab="Food Availability (std)", ylab="Weight kg (std)"
-)
-mtext("Posterior Prediction")
-# Plot MAP line
-lines(F.seq, mu.mean, lwd=2)
-# Plot HDPI region for line
-shade(mu.PI, F.seq)
-# Plot PI region for simulated W's
-shade(W.PI, F.seq)
+plot_posterior_prediction(d, mF, W ~ F, "F", "Food Availability (std)", "Weight kg (std)")
+par(mfrow = c(1, 1))
 ```
 
 \textit{As with \textbf{a)}, we observe neither a strong nor precise association with $\mu = -0.02$ and $\sigma = 0.09$. This implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
@@ -293,13 +262,13 @@ mAF <- quap(
   data=d
 )
 ```
-
 ```{r, echo=FALSE}
 cat("Standardized Area Predictors:")
 precis(mA)
 cat("Standardized Area and Food Availability Predictors:")
 precis(mAF)
 ```
+
 ```{r, echo=FALSE}
 plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
@@ -332,7 +301,11 @@ pairs(~W + A + F, d, lower.panel=NULL)
 
 \textit{Going of the assumption that the above DAG is accurate, we will simulate breaking the links from $U \rightarrow A$ and $U \rightarrow F$ by producting counterfactual plots wherin one predictor is held at 0.}
 
+```{r, echo=FALSE}
+par(mfrow = c(1, 2))
+```
 ```{r}
+# Counterfactual holding F=0
 x.seq <- seq(from=min(d$A) - 0.15, to=max(d$A) + 0.15, length.out=30)
 mu <- link(mAF, data=data.frame(A=x.seq, F=0))
 mu.mean <- apply(mu, 2, mean)
@@ -344,9 +317,7 @@ plot(NULL,
 mtext("Counterfactual holding F = 0")
 lines(x.seq, mu.mean, lwd=2)
 shade(mu.PI, x.seq)
-```
-
-```{r}
+# Counterfactual holding A=0
 x.seq <- seq(from=min(d$F) - 0.15, to=max(d$F) + 0.15, length.out=30)
 mu <- link(mAF, data=data.frame(F=x.seq, A=0))
 mu.mean <- apply(mu, 2, mean)
@@ -359,6 +330,10 @@ mtext("Counterfactual holding A = 0")
 lines(x.seq, mu.mean, lwd=2)
 shade(mu.PI, x.seq)
 ```
+```{r, echo=FALSE}
+par(mfrow = c(1, 1))
+```
+
 
 \textit{Although we can't be sure that this DAG wholly represents this data, in fact there are many DAGs that fit this data, we can see that the DAG(U, A, F, W) fits this observed data. That is, there is likely some unobserved $U$ that is a common cause of $M$ and $N$.}
 
