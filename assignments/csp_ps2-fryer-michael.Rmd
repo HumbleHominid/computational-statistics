@@ -1,7 +1,7 @@
 ---
 title: "Problem Set 2"
 author: "Michael Fryer"
-date: "Collaborators: Florian Robrecht"
+date: "Collaborators: Florian Robrecht, Janin Janokawski"
 output:
  pdf_document:
    number_sections: true
@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
 library(dagitty)
 ```
+
+For this assignment, I collaborated with Florian and Janin by discussion our independent solutions.
 
 # Multiple Regression & Causal Models
 The `foxes` dataset contains data on urban fox populations.
@@ -66,19 +68,15 @@ d$W <- standardize(d$weight)
 
 If we regress weight on territory size without including food, the coefficient should capture both pathways, the "total association" between $A$ and $W$. Construct a linear regression (`m1a`) using `quap`. Urban foxes in this population have an average weight of 5kg. Use prior predictive simulation to assess the implications of your priors. Standardize the prediction variable.
 
-\textit{Based on above, I am assuming that only the prediction variable, area, should be standardized for this model.}
+\textit{Based on above, I am assuming that only the predictor variable, \textbf{area}, should be standardized for this model.}
 
 ### Prior Predictive Simulation
 
+\textbf{A note on priors:} \textit{For this model with a standardized predictor, the value of $a$ represents our expected weight when the predictor $A = 0$. Since we are told weigh 5kg on average in this population, we will create a normal distribution with $\mu = 5$ and $\sigma = 0.75$ which represents 15\% of the mean. The value of $b$ represents the rate of change between our predictor and outcome variables. A value of 1 implies that for every 1 standard deviation of change in our prediction variable, there is 1kg of change in our outcome variable. For this model, I will be using a normal distribution with $\mu = 0$ and $\sigma = 0.5$.}
+
 ```{r}
 N <- 100
-# If our prediction variable is not a factor, mean 0, we would expect the
-#   predicted weight to be 5kg. A std of 0.75 is chosen as that represents
-#   15% of the mean
 a <- rnorm(N, 5, 0.75)
-# b represents the rate of change between our predictor and prediction variables.
-#   A value of 1 implies that for every one sd of change in our predictor
-#   variable there is 1kg of change in our prediction variable
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
@@ -120,23 +118,23 @@ m <- quap(
 precis(m)
 ```
 
-### Simulate the Priors
+### Posterior Predictions
 
 ```{r}
 set.seed(rseed)
-prior <- extract.prior(m)
-mu <- link(m, post=prior, data=list(A=c(-2, 2)))
+post <- extract.samples(m, n=20)
 ```
 ```{r, echo=FALSE}
-plot(NULL, 
-     xlim=c(-2, 2), ylim=c(0, 10),
-     xlab="Area sq-km (std)", ylab="Weight kg"
+plot <- plot(d$A, d$weight,
+  xlim=range(d$A), ylim=range(d$weight),
+  xlab="Area sq-km (std)", ylab="Weight kg",
+  col=rangi2
 )
-mtext("Prior Simulation")
-for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
+mtext("Posterior Regressor Samples")
+for (i in 1:nrow(post)) {
+  curve(post$a[i] + post$b[i]*x, col=col.alpha("black", 0.3), add=TRUE)
+}
 ```
-
-### Posterior Predictions
 
 ```{r}
 A.seq <- seq(from=-3, to=3, length.out=N)
@@ -160,7 +158,7 @@ shade(weight.PI, A.seq)
 
 **Question:** What association do you observe? What does your analysis suggest about how territory size relates to weight?
 
-\textit{With a mean of 0.02 and a standard deviation of 0.11 we observe neither a strong nor precise relationship, illustrated in the figure above. While the slope is positive, this analysis tells us that territory size gives very little information about weight.}
+\textit{With $\mu = 0.02$ and $\sigma = 0.11$ we observe neither a strong nor precise relationship between these two variables, illustrated in the figure above. While the slope is positive, this analysis tells us that territory size gives very little information about weight.}
 
 ## Part B
 
@@ -170,19 +168,13 @@ shade(weight.PI, A.seq)
 
 Use prior predictive simulation to assess the implication of your priors. Write 1-2 sentences to justify your priors.
 
-\textit{Since both our predictor and prediction variable are standardized, we will simulate priors with mean 0 and a small standard deviation. For our slope pior, b, a value of 1 represents a change of 1 standard deviation in our predicted variable for 1 standard deviation of change in our predictor variable.}
+\textbf{A note on priors:} \textit{Since both our predictor and outcome variables are standardized, we will simulate priors with $\mu = 0$ and a small standard deviation. For our intercept prior, $a$, we will use $\sigma = 0.2$ as we expect our data to be tight around the mean. For our slope prior, $b$, we will use $\sigma = 0.5$ as we expect most slopes to be in $-1 < b < 1$.}
 
 ### Prior Predictive Simulation
 
 ```{r}
 N <- 100
-# As our data is standardized, we would expect our intercept, a, to be very
-#   close to 0
 a <- rnorm(N, 0, 0.2)
-# b represents the rate of change between our predictor and prediction variables.
-#   A value of 1 implies that for every one sd of change in our predictor var.
-#   there is 1 sd of change in our prediction variables. We will choose a sd of
-#   0.5 since that means we expect most of these slopes to be in -1 < b < 1
 b <- rnorm(N, 0, 0.5)
 ```
 ```{r, echo=FALSE}
@@ -224,23 +216,24 @@ mF <- quap(
 precis(mF)
 ```
 
-### Simulate the Priors
+
+### Posterior Predictions
 
 ```{r}
 set.seed(rseed)
-prior <- extract.prior(mF)
-mu <- link(mF, post=prior, data=list(F=c(-2, 2)))
+post <- extract.samples(mF, n=20)
 ```
 ```{r, echo=FALSE}
-plot(NULL, 
-     xlim=c(-2, 2), ylim=c(-2, 2),
-     xlab="Food Availability (std)", ylab="Weight kg (std)"
+plot <- plot(d$A, d$W,
+  xlim=range(d$A), ylim=range(d$W),
+  xlab="Araea sq-km (std)", ylab="Weight kg (std)",
+  col=rangi2
 )
-mtext("Prior Simulation")
-for (i in 1:N) lines(c(-2, 2), mu[i,], col=col.alpha("black", 0.2))
+mtext("Posterior Regressor Samples")
+for (i in 1:nrow(post)) {
+  curve(post$a[i] + post$b[i]*x, col=col.alpha("black", 0.3), add=TRUE)
+}
 ```
-
-### Posterior Predictions
 
 ```{r}
 F.seq <- seq(from=-3, to=3, length.out=N)
@@ -264,13 +257,13 @@ shade(mu.PI, F.seq)
 shade(W.PI, F.seq)
 ```
 
-\textit{As with part a, we observe neither a strong nor precise association with a predicted mean of -0.02 and a standard deviation of 0.09. As with above, this implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
+\textit{As with \textbf{a)}, we observe neither a strong nor precise association with $\mu = -0.02$ and $\sigma = 0.09$. This implies food availability gives little information about weight. It is notable that food availability appears to have a negative impact on weight whereas territory size has a positive impact.}
 
 ## Part C
 
 **c)** Now regress weight on _both_ territory size and food availability Construct a `quap` model (`m1c`) that includes both predictors. Use the standardized variables. Explain your findings with 3-4 sentences and appropriate plots.
 
-\textit{In the below analysis, I will standardize both the prediction variables and the predictor variable. This is done so we can accurately compare the models to one another.}
+\textit{In the below analysis, I will standardize both the predictor variables and the outcome variable. This is done so we can accurately compare the models to one another later on.}
 
 ### Linear Regression
 
@@ -279,9 +272,7 @@ shade(W.PI, F.seq)
 mA <- quap(
   alist(
     W ~ dnorm(mu, sigma),
-    # No need to subtract mean as our predictor is standardized
     mu <- a + bA*A,
-    # Priors from earlier
     a ~ dnorm(0, 0.2),
     bA ~ dnorm(0, 0.5),
     sigma ~ dexp(1)
@@ -293,9 +284,7 @@ mA <- quap(
 mAF <- quap(
   alist(
     W ~ dnorm(mu, sigma),
-    # No need to subtract mean as our predictor is standardized
     mu <- a + bA*A + bF*F,
-    # Priors from earlier
     a ~ dnorm(0, 0.2),
     bA ~ dnorm(0, 0.5),
     bF ~ dnorm(0, 0.5),
@@ -316,7 +305,7 @@ plot(coeftab(mA, mF, mAF), par=c("bA", "bF"), xlab="Estimate")
 mtext("Posterior Coefficient Table")
 ```
 
-\textit{In the above figure, we can see that $A$ and $F$ are each more correlated with $W$ in the combined model, $mAF$ than in either of the bivariate models $mA$ and $mF$. However, we also note that the uncertainty, standard deviation, has increased drastically. Observing results like this is a strong indicator of a potential masked relationship.}
+\textit{In the above figure, we can see that $A$ and $F$ are each more correlated with $W$ in the combined model, $mAF$, than in either of the bivariate models $mA$ and $mF$. However, we also note that the uncertainty, standard deviation, has increased drastically. Observing results like this is a strong indicator of a potential masked relationship.}
 
 ## Masked Relationship
 
