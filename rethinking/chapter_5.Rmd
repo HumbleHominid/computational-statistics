@@ -94,7 +94,7 @@ plot(coeftab(mM, mN, mMN), pars=c("bM", "bN"))
 ```
 
 ```{r}
-pairs(~K + M + N, d)
+pairs(~K + M + N, d, lower.panel=NULL)
 ```
 
 

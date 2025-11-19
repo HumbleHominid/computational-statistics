@@ -1,0 +1,71 @@
+---
+title: "Chapter 6"
+author: "Michael Fryer"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
+```
+
+# Milkies
+
+```{r}
+data(milk)
+d <- milk
+set.seed(42)
+```
+```{r}
+d$K <- standardize(d$kcal.per.g)
+d$F <- standardize(d$perc.fat)
+d$L <- standardize(d$perc.lactose)
+```
+
+## Multicolinearity
+
+```{r}
+# kcal.per.g regressed on perc.fat
+mF <- quap(
+  alist(
+    K ~ dnorm(mu, sigma),
+    mu <- a + bF*F,
+    a ~ dnorm(0, 0.2),
+    bF ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+# kcal.per.g regressed on perc.lactose
+mL <- quap(
+  alist(
+    K ~ dnorm(mu, sigma),
+    mu <- a + bL*L,
+    a ~ dnorm(0, 0.2),
+    bL ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+# kcal.per.g regressed on both perc.fat and perc.lactose
+mFL <- quap(
+  alist(
+    K ~ dnorm(mu, sigma),
+    mu <- a + bF*F + bL*L,
+    a ~ dnorm(0, 0.2),
+    bF ~ dnorm(0, 0.5),
+    bL ~ dnorm(0, 0.5),
+    sigma ~ dexp(1)
+  ),
+  data=d
+)
+```
+```{r}
+plot(coeftab(mF, mL, mFL), par=c("bF", "bL"), xlab="Estimate")
+```
+
+
+
