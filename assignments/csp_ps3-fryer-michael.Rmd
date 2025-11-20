@@ -23,6 +23,8 @@ Suppose biased coin lands heads 60% of the time.
 ```{r}
 # 60% heads, 40% tails
 p <- c(0.6, 0.4)
+```
+```{r, echo=FALSE}
 cat("Entropy: ", -sum(p*log(p)))
 ```
 
@@ -31,33 +33,40 @@ cat("Entropy: ", -sum(p*log(p)))
 ```{r}
 # 70% heads, 30% tails
 q <- c(0.7, 0.3)
+```
+```{r, echo=FALSE}
 cat("Entropy: ", -sum(q*log(q)))
 ```
 
-\textit{The coin in part \textbf{a)} has a higher entropy than the coin in \textbf{b)}. The variance in the probabilities in \textbf{b)} is larger than int \textbf{a)} i.e. the more unique events there are with similar probabilities of occuring, the larger the entropy will be.}
+\textit{The coin in part \textbf{a)} has a higher entropy than the coin in \textbf{b)}. The variance in the probabilities in \textbf{b)} is larger than in \textbf{a)} i.e. the more unique events there are with similar probabilities of occurring, the larger the entropy will be.}
 
 **c)** Suppose the first coin is the true distribution and the second coin’s distribution is your approximation of the first coin. What is the KL divergence between these two distributions? Explain and justify your answer.
 
+KL divergence is defined as:
+$$D_{KL}(p, q) = \sum_{i}{p_i\log\left(\frac{p_i}{q_i}\right)}$$
+
 ```{r}
-cat("KL divergence: ", sum(p*log(p/q)))
+kl <- sum(p*log(p/q))
+```
+```{r, echo=FALSE}
+cat("KL divergence: ", kl)
 ```
 
-\textit{We observe a KL divergence of 0.022. We expect this value to be small as $p$ and $q$ are relatively close together and the KL divergence is the average difference in log probabilities between the two models. This value would be much larger if instead $q={0.9, 0.1}$.}
+\textit{We observe a KL divergence of 0.022. We expect this value to be small as $p$ and $q$ are relatively "close" together and the KL divergence is the average difference in log probabilities between the two models. This value would be much larger if instead $q=\{0.9, 0.1\}$.}
 
 # Collider Bias and Information Criteria
 
 Return to the textbook example in §6.3.1, which explores the relationship between age, marriage and happiness. This example makes use of the simulation model `sim_happiness()`, which is part of the rethinking package:
 
 ```{r}
-d <- sim_happiness( seed=1515 , N_years=1000)
-d2 <- d[ d$age>17 , ] # only adults
-d2$A <- (d2$age- 18) / (65- 18)
+d <- sim_happiness(seed=1515 , N_years=1000)
+d2 <- d[d$age > 17 ,] # only adults
+d2$A <- (d2$age - 18) / (65-  18)
 d2$mid <- d2$married + 1
 ```
 ```{r, echo=FALSE, eval=FALSE}
 precis(d)
 ```
-
 
 Compare the two models, `m6.9` and `m6.10`, using both PSIS and WAIC scores using `compare()`.
 
