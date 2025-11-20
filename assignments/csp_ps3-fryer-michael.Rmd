@@ -16,6 +16,11 @@ library(rethinking)
 
 # Entropy & Divergence
 
+```{r}
+# Calculate Information Entropy
+calc_entropy <- function(l) return(-sum(l*log(l)))
+```
+
 Suppose biased coin lands heads 60% of the time.
 
 **a)** What is the entropy of this coin?
@@ -23,9 +28,10 @@ Suppose biased coin lands heads 60% of the time.
 ```{r}
 # 60% heads, 40% tails
 p <- c(0.6, 0.4)
+entropy.p <- calc_entropy(p)
 ```
 ```{r, echo=FALSE}
-cat("Entropy: ", -sum(p*log(p)))
+cat("Entropy: ", entropy.p)
 ```
 
 **b)** Suppose another biased coin lands tails 30% of the time. Which coin has higher entropy? Justify and explain your answer.
@@ -33,9 +39,10 @@ cat("Entropy: ", -sum(p*log(p)))
 ```{r}
 # 70% heads, 30% tails
 q <- c(0.7, 0.3)
+entropy.q <- calc_entropy(q)
 ```
 ```{r, echo=FALSE}
-cat("Entropy: ", -sum(q*log(q)))
+cat("Entropy: ", entropy.q)
 ```
 
 \textit{The coin in part \textbf{a)} has a higher entropy than the coin in \textbf{b)}. The variance in the probabilities in \textbf{b)} is larger than in \textbf{a)} i.e. the more unique events there are with similar probabilities of occurring, the larger the entropy will be.}
@@ -69,6 +76,23 @@ precis(d)
 ```
 
 Compare the two models, `m6.9` and `m6.10`, using both PSIS and WAIC scores using `compare()`.
+
+```{r}
+# # Model m6.9
+# m6.9 <- quap(
+#   alist(
+#     
+#   ),
+#   data=d
+# )
+# # Model m6.10
+# m6.10 <- quap(
+#   alist(
+#     
+#   ),
+#   data=d
+# )
+```
 
 **a)** Which model is expected to make better predictions according to these two information criteria? Explain your answer.
 
