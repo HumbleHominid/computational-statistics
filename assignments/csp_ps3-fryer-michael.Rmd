@@ -2,29 +2,134 @@
 title: "Problem Set 3"
 author: "Michael Fryer"
 date: "`r Sys.Date()`"
-output: pdf_document
+output:
+ pdf_document:
+   number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
 ```
 
-## R Markdown
+**Collaborators:** \textit{...}
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Entropy & Divergence
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Suppose biased coin lands heads 60% of the time.
 
-```{r cars}
-summary(cars)
+**a)** What is the entropy of this coin?
+
+\textit{}
+
+**b)** Suppose another biased coin lands tails 30% of the time. Which coin has higher entropy? Justify and explain your answer.
+
+\textit{}
+
+**c)** Suppose the first coin is the true distribution and the second coin’s distribution is your approximation of the first coin. What is the KL divergence between these two distributions? Explain and justify your answer.
+
+\textit{}
+
+# Collider Bias and Information Criteria
+
+Return to the textbook example in §6.3.1, which explores the relationship between age, marriage and happiness. This example makes use of the simulation model `sim_happiness()`, which is part of the rethinking package:
+
+```{r}
+d <- sim_happiness( seed=1515 , N_years=1000)
+d2 <- d[ d$age>17 , ] # only adults
+d2$A <- (d2$age- 18) / (65- 18)
+d2$mid <- d2$married + 1
+```
+```{r, echo=FALSE, eval=FALSE}
+precis(d)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+Compare the two models, `m6.9` and `m6.10`, using both PSIS and WAIC scores using `compare()`.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+**a)** Which model is expected to make better predictions according to these two information criteria? Explain your answer.
+
+\textit{}
+
+**b)** On the basis of the causal model, how should you interpret the parameter estimates from the model preferred by PSIS and WAIC?
+
+\textit{}
+
+# Tulips and Interactions
+
+Tulips need both water and light to bloom. But do water and light work independently, or do they interact? The `tulips` dataset in the rethinking package contains experimental data on tulip blooms under different conditions.
+
+```{r}
+data(tulips)
+d <- tulips
+str(d)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The dataset contains:
+
+- `bed`: Bed identifier (grouping variable)
+- `water`: Amount of water (1 = low, 2 = medium, 3 = high)
+- `shade`: Amount of shade (1 = low, 2 = medium, 3 = high)
+- `blooms`: Number of blooms produced
+
+Before fitting any models, standardize the predictor variables and the outcome:
+
+**a)** Fit a model (`m3.1`) that predicts blooms using water and shade as independent predictors (no interaction). That is, assume the effect of water on blooms is the same regardless of shade level, and vice versa.
+
+Use prior predictive simulation to justify your priors. Write 2-3 sentences explaining your choice of priors.
+
+**Hint:** With standardized variables, you should use relatively weak priors. A slope of 2.0 would be implausibly large for most ecological relationships.
+
+\textit{}
+
+**b)** Now fit a model (`m3.2`) that includes an interaction between water and shade. This allows the effect of water on blooms to depend on the level of shade (and vice versa).
+
+**Hint:** In the model formula, you can specify the interaction as $W*S$, which is shorthand for $W + S + W*S$. Or you can write out all three terms explicitly.
+
+Plot the posterior predictions for both models (`m3.1` and `m3.2`) side by side. For each model, create a plot showing how predicted blooms change with water at different levels of shade (e.g., plot three lines for shade = -1, 0, 1).
+
+\textit{}
+
+**c)** Use both PSIS and WAIC to compare your two models. Which model is expected to make better predictions? Is the difference substantial?
+
+Create the comparison plot using `plot(compare(m3.1, m3.2))` and interpret what you see. Write 3-4 sentences explaining:
+
+- Which model performs better
+- How large the difference is relative to the standard error
+- What this tells you about whether water and shade interact in affecting tulip blooms
+
+\textit{}
+
+**d)** Examine the pointwise PSIS diagnostics for your preferred model. Are there any problematic observations (high Pareto $k$ values)? If so, which observations are influential and why might they be outliers?
+
+**Hint:** Use `PSIS(model, pointwise=TRUE)` and examine the $k$ values.
+
+\textit{}
+
+**e)** Based on your analysis, write 2-3 sentences answering: Do water and light work independently to affect tulip blooms, or do they interact? What does this mean biologically?
+
+\textit{}
+
+# Reflection
+
+Look back at Problems 2 and 3. Both involve interactions, but of different kinds:
+
+- In Problem 2, you examined collider bias, where conditioning on a variable (marriage status) creates a spurious association between age and happiness
+- In Problem 3, you examined multiplicative interactions, where the effect of one variable (water) depends on the level of another (shade)
+
+Write 3-4 sentences explaining: What is the difference between these two types of “interactions”? How are they similar and how are they different from a causal modeling perspective?
+
+\textit{}
+
+# AI Declaration
+
+Please declare your collaborators in the class and how you used AI (if at all) to complete this assignment. If you used AI, include the prompts you used and explain what you learned from its responses that you didn’t understand initially.
+
+\newpage
+# Appendix
+
+```{r, echo=FALSE}
+appendix.labels = c()
+```
+```{r, ref.label=appendix.labels, eval=FALSE}
+```
