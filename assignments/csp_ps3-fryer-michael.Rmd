@@ -45,7 +45,7 @@ entropy.q <- calc_entropy(q)
 cat("Entropy: ", entropy.q)
 ```
 
-\textit{The coin in part \textbf{a)} has a higher entropy than the coin in \textbf{b)}. The variance in the probabilities in \textbf{b)} is larger than in \textbf{a)} i.e. the more unique events there are with similar probabilities of occurring, the larger the entropy will be.}
+\textit{The coin in part \textbf{a)} has a higher entropy than the coin in \textbf{b)}. This is because the variance in the probabilities in \textbf{b)} is larger than in \textbf{a)} i.e. the more unique events there are with similar probabilities of occurring, the larger the entropy will be.}
 
 **c)** Suppose the first coin is the true distribution and the second coin’s distribution is your approximation of the first coin. What is the KL divergence between these two distributions? Explain and justify your answer.
 
@@ -67,40 +67,64 @@ Return to the textbook example in §6.3.1, which explores the relationship betwe
 
 ```{r}
 d <- sim_happiness(seed=1515 , N_years=1000)
-d2 <- d[d$age > 17 ,] # only adults
-d2$A <- (d2$age - 18) / (65-  18)
-d2$mid <- d2$married + 1
+d.adults <- d[d$age > 17,] # only adults
+d.adults$A <- (d.adults$age - 18) / (65 - 18)
+d.adults$mid <- d.adults$married + 1
 ```
 ```{r, echo=FALSE, eval=FALSE}
-precis(d)
+precis(d.adults)
 ```
 
 Compare the two models, `m6.9` and `m6.10`, using both PSIS and WAIC scores using `compare()`.
 
+_Fit_ `m6.9` _and_ `m6.10`.
 ```{r}
-# # Model m6.9
-# m6.9 <- quap(
-#   alist(
-#     
-#   ),
-#   data=d
-# )
-# # Model m6.10
-# m6.10 <- quap(
-#   alist(
-#     
-#   ),
-#   data=d
-# )
+# Model m6.9
+m6.9 <- quap(
+  alist(
+    happiness ~ dnorm(mu, sigma),
+    mu <- a[mid] + bA*A,
+    a[mid] ~ dnorm(0, 1),
+    bA ~ dnorm(0, 2),
+    sigma ~ dexp(1)
+  ),
+  data=d.adults
+)
+# Model m6.10
+m6.10 <- quap(
+  alist(
+    happiness ~ dnorm(mu, sigma),
+    mu <- a + bA*A,
+    a ~ dnorm(0, 1),
+    bA ~ dnorm(0, 2),
+    sigma ~ dexp(1)
+  ),
+  data=d.adults
+)
+```
+
+\textit{Score the models with PSIS.}
+```{r, echo=FALSE}
+set.seed(42)
+```
+```{r}
+compare(m6.9, m6.10, func=PSIS)
+```
+\textit{Score the models with WAIC.}
+```{r, echo=FALSE}
+set.seed(42)
+```
+```{r}
+compare(m6.9, m6.10, func=WAIC)
 ```
 
 **a)** Which model is expected to make better predictions according to these two information criteria? Explain your answer.
 
-\textit{}
+\textit{In both cross-validation approximators, a lower score is better. With that metric in mind, both WAIC and PSIS expect} `m6.9` \textit{to be a better prediction model. However, it should be noted that both the standard error} (\textbf{SE}) \textit{and prediction penalty} (\textbf{pPSIS} and \textbf{pWAIC}) \textit{are higher in} `m6.9`.
 
 **b)** On the basis of the causal model, how should you interpret the parameter estimates from the model preferred by PSIS and WAIC?
 
-\textit{}
+\textit{As WAIC and PSIS are estimates for predictability, one cannot, and should not, use them to inform any decisions about a causal model. That is, WAIC and PSIS scores have no bearing on if the model is the "correct" causal model.}
 
 # Tulips and Interactions
 
