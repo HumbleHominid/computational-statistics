@@ -1,0 +1,156 @@
+---
+title: "Chapter 7"
+author: "Michael Fryer"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
+```
+
+# Overfitting
+
+Set up the data.
+```{r}
+sppnames <- c(
+  "afarensis",
+  "africanus",
+  "habilis",
+  "boisei",
+  "rudolfensis",
+  "ergaster",
+  "sapiens"
+)
+brainvolcc <- c(438, 452, 612, 521, 752, 871, 1350)
+masskg <- c(37.0, 35.5, 34.4, 41.5, 55.5, 61.0, 53.5)
+d <- data.frame(species=sppnames, brain=brainvolcc, mass=masskg)
+```
+
+Scale the data. Note we scale brain size to 1
+```{r}
+d$mass_std <- (d$mass - mean(d$mass))/sd(d$mass)
+d$brain_std <- d$brain / max(d$brain)
+```
+
+Linear model
+```{r}
+m7.1 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, exp(log_sigma)),
+    mu <- a + b*mass_std,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10),
+    log_sigma ~ dnorm(0, 1)
+  ),
+  data=d
+)
+```
+
+Computing $R^2$. Note: we use `var2` as `var` is a frequentist estimator with the wrong denominator (bad!).
+```{r}
+r2_is_bad <- function(quap_fit, col) {
+  s <- sim(quap_fit)
+  r <- apply(s, 2, mean) - col
+  1 - var2(r) / var2(col)
+}
+
+r2_is_bad(m7.1, d$brain_std)
+```
+
+More models of increasing degree
+```{r}
+# degree 2
+m7.2 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, exp(log_sigma)),
+    mu <- a + b[1]*mass_std + b[2]*mass_std^2,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10),
+    log_sigma ~ dnorm(0, 1)
+  ),
+  data=d, start=list(b=rep(0, 2))
+)
+# degree 3
+m7.3 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, exp(log_sigma)),
+    mu <- a + b[1]*mass_std + b[2]*mass_std^2 + b[3]*mass_std^3,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10),
+    log_sigma ~ dnorm(0, 1)
+  ),
+  data=d, start=list(b=rep(0, 3))
+)
+# degree 4
+m7.4 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, exp(log_sigma)),
+    mu <- a +
+      b[1]*mass_std +
+      b[2]*mass_std^2 +
+      b[3]*mass_std^3 +
+      b[4]*mass_std^4,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10),
+    log_sigma ~ dnorm(0, 1)
+  ),
+  data=d, start=list(b=rep(0, 4))
+)
+# degree 5
+m7.5 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, exp(log_sigma)),
+    mu <- a +
+      b[1]*mass_std +
+      b[2]*mass_std^2 +
+      b[3]*mass_std^3 +
+      b[4]*mass_std^4 +
+      b[5]*mass_std^5,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10),
+    log_sigma ~ dnorm(0, 1)
+  ),
+  data=d, start=list(b=rep(0, 5))
+)
+# degree 6
+m7.6 <- quap(
+  alist(
+    brain_std ~ dnorm(mu, 0.001),
+    mu <- a +
+      b[1]*mass_std +
+      b[2]*mass_std^2 +
+      b[3]*mass_std^3 +
+      b[4]*mass_std^4 +
+      b[5]*mass_std^5 +
+      b[6]*mass_std^6,
+    a ~ dnorm(0.5, 1),
+    b ~ dnorm(0, 10)
+  ),
+  data=d, start=list(b=rep(0, 6))
+)
+```
+
+# Entropy
+
+The untertainty contained in a probability distribution is the average log-probability of an event.
+$$
+H(p) = -E\log(p_i) = -\sum_{i=1}^np_i\log(p_i)
+$$
+
+```{r}
+p <- c(0.3, 0.7)
+-sum(p*log(p))
+```
+
+
+
+
+
+
+
+
+
