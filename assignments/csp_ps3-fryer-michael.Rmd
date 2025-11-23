@@ -10,6 +10,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
+library(dagitty)
 ```
 
 **Collaborators:** \textit{...}
@@ -155,6 +156,11 @@ The dataset contains:
 - `blooms`: Number of blooms produced
 
 Before fitting any models, standardize the predictor variables and the outcome:
+```{r}
+d$W <- standardize(d$water)
+d$S <- standardize(d$shade)
+d$B <- standardize(d$bloom)
+```
 
 **a)** Fit a model (`m3.1`) that predicts blooms using water and shade as independent predictors (no interaction). That is, assume the effect of water on blooms is the same regardless of shade level, and vice versa.
 
@@ -162,7 +168,73 @@ Use prior predictive simulation to justify your priors. Write 2-3 sentences expl
 
 **Hint:** With standardized variables, you should use relatively weak priors. A slope of 2.0 would be implausibly large for most ecological relationships.
 
-\textit{}
+\textit{A DAG of the causal relationship we are exploring:}
+```{r, fig.align="center", echo=FALSE}
+dag <- dagitty("dag {
+  S -> B
+  W -> B
+}")
+coordinates(dag) <- list(x=c(B=0, S=-0.5, W=0.5), y=c(B=.1, S=0, W=0))
+drawdag(dag, xlim=c(-1, 1), ylim=c(-1, 1))
+
+```
+```{r plots, echo=FALSE}
+##############
+# Plot Helpers
+##############
+# Plots a standardized predictor x
+plot_prior_prediction <- function(x, ylim, xlab, ylab, title="Prior Prediction") {
+  plot(NULL, xlim=range(x), ylim=ylim, xlab=xlab, ylab=ylab)
+  mtext(title)
+  # Graph all the lines
+  for (i in 1:N) {
+    curve(a[i] + b[i]*x,
+      from=min(x), to=max(x),
+      col=col.alpha("black", 0.2), add=TRUE
+    )
+  }
+}
+```
+
+\textit{Since both our predictor variables and our outcome variable are standardized, we would expect a mean 0 outcome wthen both out predictor variables are 0. I will use a standard deviation prior of 0.5 for water and shade. This is because we expect the individual impacts of water and shade on blooms to be no more highly correlated than 1 meaning one standard deviation change in water or shade implies one standard deviation change in blooms. We will use a standard deviation on our outcome variable of 0.4 to represent our uncertainty but additionaly a looser prior will potentially allow for a better fit on our small sample size.}
+
+```{r}
+N <- 100
+a <- rnorm(N, 0, 0.4)
+bS <- rnorm(N, 0, 0.5)
+bW <- rnorm(N, 0, 0.5)
+```
+```{r, echo=FALSE, fig.align='center', fig.width=7, fig.height=3}
+par(mfrow=c(1, 2))
+b <- bW
+plot_prior_prediction(
+  x=d$W, ylim=c(-2, 2),
+  xlab="Water (std)", ylab="Blooms (std)",
+  title="Shade Held 0"
+)
+b <- bS
+plot_prior_prediction(
+  x=d$S, ylim=c(-2, 2),
+  xlab="Shade (std)", ylab="Blooms (std)",
+  title="Water Held 0"
+)
+par(mfrow=c(1, 1))
+```
+
+```{r}
+m3.1 <- quap(
+  alist(
+    B <- dnorm(mu, sigma),
+    mu <- a + bS*S + bW*W,
+    a ~ dnorm(0, 0.4),
+    bS ~ dnorm(0, 0.5),
+    bW ~ dnorm(0, 0.5),
+    sigma ~ exp(1)
+  ),
+  data=d
+)
+```
+
 
 **b)** Now fit a model (`m3.2`) that includes an interaction between water and shade. This allows the effect of water on blooms to depend on the level of shade (and vice versa).
 
