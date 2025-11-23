@@ -49,7 +49,7 @@ cat("Entropy: ", entropy.q)
 
 **c)** Suppose the first coin is the true distribution and the second coin’s distribution is your approximation of the first coin. What is the KL divergence between these two distributions? Explain and justify your answer.
 
-KL divergence is defined as:
+\textit{KL divergence is defined as:}
 $$D_{KL}(p, q) = \sum_{i}{p_i\log\left(\frac{p_i}{q_i}\right)}$$
 
 ```{r}
@@ -103,28 +103,39 @@ m6.10 <- quap(
 )
 ```
 
-\textit{Score the models with PSIS.}
+\textit{Score the models.}
 ```{r, echo=FALSE}
 set.seed(42)
 ```
 ```{r}
-compare(m6.9, m6.10, func=PSIS)
+psis.compare <- compare(m6.9, m6.10, func=PSIS)
 ```
-\textit{Score the models with WAIC.}
 ```{r, echo=FALSE}
 set.seed(42)
 ```
 ```{r}
-compare(m6.9, m6.10, func=WAIC)
+waic.compare <- compare(m6.9, m6.10, func=WAIC)
+```
+
+\textit{Chart the models.}
+```{r, echo=FALSE}
+psis.compare
+waic.compare
+```
+```{r, echo=FALSE, fig.height=2.5, fig.width=7, fig.align="center"}
+par(mfrow=c(1, 2))
+plot(psis.compare)
+plot(waic.compare)
+par(mfrow=c(1, 1))
 ```
 
 **a)** Which model is expected to make better predictions according to these two information criteria? Explain your answer.
 
-\textit{In both cross-validation approximators, a lower score is better. With that metric in mind, both WAIC and PSIS expect} `m6.9` \textit{to be a better prediction model. However, it should be noted that both the standard error} (\textbf{SE}) \textit{and prediction penalty} (\textbf{pPSIS} and \textbf{pWAIC}) \textit{are higher in} `m6.9`.
+\textit{In both cross-validation approximators, a lower score is better. With that metric in mind, both WAIC and PSIS expect} `m6.9` \textit{to be a better prediction model. However, it should be noted that both the standard error} (**SE**) \textit{and prediction penalty} (**pPSIS** and **pWAIC**) \textit{are higher in} `m6.9`. \textit{This means that while} `m6.9` \textit{is a better predictor according to WAIC and PSIS, it has more uncertainty,} **SE**.
 
 **b)** On the basis of the causal model, how should you interpret the parameter estimates from the model preferred by PSIS and WAIC?
 
-\textit{As WAIC and PSIS are estimates for predictability, one cannot, and should not, use them to inform any decisions about a causal model. That is, WAIC and PSIS scores have no bearing on if the model is the "correct" causal model.}
+\textit{As WAIC and PSIS are cross-validation approximators, they estimate of how well a model does at \textbf{predictions}, one cannot, and should not, use them to inform any decisions about \textbf{causations} That is, WAIC and PSIS scores have no bearing on if the model is the "correct" causal model. In fact,} `m6.9` \textit{is \textbf{not} the correct causal model}, `m6.10` \textit{is.}
 
 # Tulips and Interactions
 
