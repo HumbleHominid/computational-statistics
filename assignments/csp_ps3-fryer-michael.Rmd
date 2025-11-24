@@ -10,7 +10,6 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
-library(dagitty)
 ```
 
 **Collaborators:** \textit{...}
@@ -156,10 +155,15 @@ The dataset contains:
 - `blooms`: Number of blooms produced
 
 Before fitting any models, standardize the predictor variables and the outcome:
+
+\textit{Below, I do not standardize the predictor variables and the outcome. Instead, I scale the outcome to $[0,1]$ and center the predictor variables such that the values are ${-1, 0, 1}$. This accomplishes a similar goal as standardizing but makes it easier to reason about.}
 ```{r}
-d$W <- standardize(d$water)
-d$S <- standardize(d$shade)
-d$B <- standardize(d$bloom)
+# Scale blooms to [0, 1]
+d$B <- (d$blooms - min(d$blooms))
+d$B <- d$B / max(d$B)
+# Center water and shade st. the values are {-1,0,1}
+d$W <- d$water - mean(d$water)
+d$S <- d$shade - mean(d$shade)
 ```
 
 **a)** Fit a model (`m3.1`) that predicts blooms using water and shade as independent predictors (no interaction). That is, assume the effect of water on blooms is the same regardless of shade level, and vice versa.
@@ -167,21 +171,7 @@ d$B <- standardize(d$bloom)
 Use prior predictive simulation to justify your priors. Write 2-3 sentences explaining your choice of priors.
 
 **Hint:** With standardized variables, you should use relatively weak priors. A slope of 2.0 would be implausibly large for most ecological relationships.
-
-\textit{A DAG of the causal relationship we are exploring:}
-```{r, fig.align="center", echo=FALSE}
-dag <- dagitty("dag {
-  S -> B
-  W -> B
-}")
-coordinates(dag) <- list(x=c(B=0, S=-0.5, W=0.5), y=c(B=.1, S=0, W=0))
-drawdag(dag, xlim=c(-1, 1), ylim=c(-1, 1))
-
-```
-```{r plots, echo=FALSE}
-##############
-# Plot Helpers
-##############
+```{r plot_prior, echo=FALSE}
 # Plots a standardized predictor x
 plot_prior_prediction <- function(x, ylim, xlab, ylab, title="Prior Prediction") {
   plot(NULL, xlim=range(x), ylim=ylim, xlab=xlab, ylab=ylab)
@@ -193,30 +183,34 @@ plot_prior_prediction <- function(x, ylim, xlab, ylab, title="Prior Prediction")
       col=col.alpha("black", 0.2), add=TRUE
     )
   }
+  # Bounds of impossibilities
+  abline(h=0, lty=2)
+  abline(h=1, lty=2)
 }
+
 ```
 
-\textit{Since both our predictor variables and our outcome variable are standardized, we would expect a mean 0 outcome wthen both out predictor variables are 0. I will use a standard deviation prior of 0.5 for water and shade. This is because we expect the individual impacts of water and shade on blooms to be no more highly correlated than 1 meaning one standard deviation change in water or shade implies one standard deviation change in blooms. We will use a standard deviation on our outcome variable of 0.4 to represent our uncertainty but additionaly a looser prior will potentially allow for a better fit on our small sample size.}
+\textit{Since we are scaling and centering our data instead of standardizing it, our priors will not all be mean 0. We will predict our outcome prior will have $\mu = 0.5$ as we scaled our blooms to $[0, 1]$ and the predictor prior will have $\mu = 0$ as we centered that data. For our standard deviations, we will use $\sigma = 0.25$ for our outcome prior. This is because $\pm2\sigma$ would put blooms at impossible values for our small world i.e. $>0$ or $<1$. For the same reasons, we will use $\sigma = 0.25$ for our predictor variables.}
 
 ```{r}
-N <- 100
-a <- rnorm(N, 0, 0.4)
-bS <- rnorm(N, 0, 0.5)
-bW <- rnorm(N, 0, 0.5)
+N <- 50
+a <- rnorm(N, 0.5, 0.25)
+bS <- rnorm(N, 0, 0.25)
+bW <- rnorm(N, 0, 0.25)
 ```
 ```{r, echo=FALSE, fig.align='center', fig.width=7, fig.height=3}
 par(mfrow=c(1, 2))
 b <- bW
 plot_prior_prediction(
-  x=d$W, ylim=c(-2, 2),
-  xlab="Water (std)", ylab="Blooms (std)",
-  title="Shade Held 0"
+  x=d$W, ylim=c(-0.5, 1.5),
+  xlab="Water (centered)", ylab="Blooms (scaled)",
+  title="Prior Prediction: Shade Held 0"
 )
 b <- bS
 plot_prior_prediction(
-  x=d$S, ylim=c(-2, 2),
-  xlab="Shade (std)", ylab="Blooms (std)",
-  title="Water Held 0"
+  x=d$S, ylim=c(-0.5, 1.5),
+  xlab="Shade (centered)", ylab="Blooms (scaled)",
+  title="Prior Prediction: Water Held 0"
 )
 par(mfrow=c(1, 1))
 ```
@@ -224,25 +218,66 @@ par(mfrow=c(1, 1))
 ```{r}
 m3.1 <- quap(
   alist(
-    B <- dnorm(mu, sigma),
+    B ~ dnorm(mu, sigma),
     mu <- a + bS*S + bW*W,
-    a ~ dnorm(0, 0.4),
-    bS ~ dnorm(0, 0.5),
-    bW ~ dnorm(0, 0.5),
+    a ~ dnorm(0.5, 0.25),
+    bS ~ dnorm(0, 0.25),
+    bW ~ dnorm(0, 0.25),
     sigma ~ exp(1)
   ),
   data=d
 )
 ```
 
-
 **b)** Now fit a model (`m3.2`) that includes an interaction between water and shade. This allows the effect of water on blooms to depend on the level of shade (and vice versa).
 
 **Hint:** In the model formula, you can specify the interaction as $W*S$, which is shorthand for $W + S + W*S$. Or you can write out all three terms explicitly.
 
+```{r}
+m3.2 <- quap(
+  alist(
+    B ~ dnorm(mu, sigma),
+    mu <- a + bS*S + bW*W + bSW*S*W,
+    a ~ dnorm(0.5, 0.25),
+    bS ~ dnorm(0, 0.25),
+    bW ~ dnorm(0, 0.25),
+    bSW ~ dnorm(0, 0.25),
+    sigma ~ exp(1)
+  ),
+  data=d
+)
+```
+
 Plot the posterior predictions for both models (`m3.1` and `m3.2`) side by side. For each model, create a plot showing how predicted blooms change with water at different levels of shade (e.g., plot three lines for shade = -1, 0, 1).
 
-\textit{}
+```{r plot_post, echo=FALSE}
+# Plot the posterior predictions for blooms
+plot_post_prediction_blooms <- function(m, m.name) {
+  for (s in -1:1) {
+    i <- which(d$S==s)
+    plot(d$W[i], d$B[i],
+      xlim=c(-1, 1), ylim=c(0, 1),
+      xlab="Water (centered)", ylab="Blooms (scaled)",
+      pch=16, col=rangi2
+    )
+    mtext(sprintf("%s post: shade = %d", m.name, s))
+    post <- link(m, data=data.frame(S=s, W=-1:1))
+    mu <- post$mu
+    for (j in 1:20) lines(-1:1, mu[j,], col=col.alpha("black", 0.3))
+  }
+}
+
+```
+```{r, echo=FALSE}
+par(mfrow=c(2, 3))
+```
+```{r, echo=FALSE, fig.width=2.5, fig.height=2.5}
+plot_post_prediction_blooms(m3.1, "m3.1")
+plot_post_prediction_blooms(m3.2, "m3.2")
+```
+```{r, echo=FALSE}
+par(mfrow=c(1, 1))
+```
 
 **c)** Use both PSIS and WAIC to compare your two models. Which model is expected to make better predictions? Is the difference substantial?
 
@@ -252,17 +287,53 @@ Create the comparison plot using `plot(compare(m3.1, m3.2))` and interpret what 
 - How large the difference is relative to the standard error
 - What this tells you about whether water and shade interact in affecting tulip blooms
 
-\textit{}
+\textit{Score the models.}
+```{r, echo=FALSE}
+set.seed(42)
+```
+```{r}
+psis.compare <- compare(m3.1, m3.2, func=PSIS)
+```
+```{r, echo=FALSE}
+set.seed(42)
+```
+```{r}
+waic.compare <- compare(m3.1, m3.2, func=WAIC)
+```
+\textit{Chart the models.}
+```{r, echo=FALSE}
+psis.compare
+waic.compare
+```
+```{r, echo=FALSE, fig.height=2.5, fig.width=7, fig.align="center"}
+par(mfrow=c(1, 2))
+plot(psis.compare)
+plot(waic.compare)
+par(mfrow=c(1, 1))
+```
+\textit{When comparing our two models using PSIS and WAIC we see similar results. With each method,} `m3.1` \textit{is expected to perform better. When comparing the difference, \textbf{dPSIS} and \textbf{dWAIC}, we observe that it is about half of the standard error. Additionally, the \textbf{dSE} for} $m3.2$ \textit{is 0.02. This implies that there is very little difference between these two models from a predictions perspective. According to these comparisons alone, there isn't strong support for including the interaction effect. If there was, we would expect to see} $m3.2$ \textit{outperforming } $m3.1$.
 
 **d)** Examine the pointwise PSIS diagnostics for your preferred model. Are there any problematic observations (high Pareto $k$ values)? If so, which observations are influential and why might they be outliers?
 
 **Hint:** Use `PSIS(model, pointwise=TRUE)` and examine the $k$ values.
-
-\textit{}
+```{r, echo=FALSE}
+set.seed(42)
+```
+```{r}
+psis <- PSIS(m3.1, pointwise=TRUE)
+plot(psis$k, psis$penalty,
+     xlab="PSIS Pareto k", ylab="PSIS Penalty",
+     col=rangi2, lwd=2
+)
+```
+```{r, echo=FALSE}
+cat(sprintf("Max Pareto k-value: %0.3f", max(psis$k)))
+```
+\textit{When there are Pareto} $k$ \textit{values above 0.5, their importance weight can be unreliable. This is an indicator of a potential outlier. The highest Pareto} $k$ \textit{value we observe is 0.294 which is well below the 0.5 warning threshold.}
 
 **e)** Based on your analysis, write 2-3 sentences answering: Do water and light work independently to affect tulip blooms, or do they interact? What does this mean biologically?
 
-\textit{}
+\textit{It is very likely that water and light interact to affect tulip bloom. This is evidenced by the shifing slopes in \textbf{b)} for} $m3.2$ \textit{when holding shade. This would not be able to happen if there was not interaction. A possible biological explaination for such an interaction is that tulips need both light and water to produce blooms. This is, of course, obvious. Plants need light and nutrients to grow.}
 
 # Reflection
 
@@ -283,7 +354,7 @@ Please declare your collaborators in the class and how you used AI (if at all) t
 # Appendix
 
 ```{r, echo=FALSE}
-appendix.labels = c()
+appendix.labels = c("plot_prior", "plot_post")
 ```
 ```{r, ref.label=appendix.labels, eval=FALSE}
 ```
