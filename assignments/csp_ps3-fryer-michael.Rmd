@@ -10,6 +10,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
+rseed <- 42
 ```
 
 **Collaborators:** \textit{...}
@@ -105,13 +106,13 @@ m6.10 <- quap(
 
 \textit{Score the models.}
 ```{r, echo=FALSE}
-set.seed(42)
+set.seed(rseed)
 ```
 ```{r}
 psis.compare <- compare(m6.9, m6.10, func=PSIS)
 ```
 ```{r, echo=FALSE}
-set.seed(42)
+set.seed(rseed)
 ```
 ```{r}
 waic.compare <- compare(m6.9, m6.10, func=WAIC)
@@ -219,15 +220,19 @@ par(mfrow=c(1, 1))
 m3.1 <- quap(
   alist(
     B ~ dnorm(mu, sigma),
-    mu <- a + bS*S + bW*W,
+    mu <- a + bW*W + bS*S,
     a ~ dnorm(0.5, 0.25),
-    bS ~ dnorm(0, 0.25),
     bW ~ dnorm(0, 0.25),
-    sigma ~ exp(1)
+    bS ~ dnorm(0, 0.25),
+    sigma ~ dexp(1)
   ),
   data=d
 )
 ```
+```{r, echo=FALSE,eval=FALSE}
+precis(m3.1)
+```
+
 
 **b)** Now fit a model (`m3.2`) that includes an interaction between water and shade. This allows the effect of water on blooms to depend on the level of shade (and vice versa).
 
@@ -237,15 +242,18 @@ m3.1 <- quap(
 m3.2 <- quap(
   alist(
     B ~ dnorm(mu, sigma),
-    mu <- a + bS*S + bW*W + bSW*S*W,
+    mu <- a + bW*W + bS*S + bWS*W*S,
     a ~ dnorm(0.5, 0.25),
-    bS ~ dnorm(0, 0.25),
     bW ~ dnorm(0, 0.25),
-    bSW ~ dnorm(0, 0.25),
-    sigma ~ exp(1)
+    bS ~ dnorm(0, 0.25),
+    bWS ~ dnorm(0, 0.25),
+    sigma ~ dexp(1)
   ),
   data=d
 )
+```
+```{r, echo=FALSE,eval=FALSE}
+precis(m3.2)
 ```
 
 Plot the posterior predictions for both models (`m3.1` and `m3.2`) side by side. For each model, create a plot showing how predicted blooms change with water at different levels of shade (e.g., plot three lines for shade = -1, 0, 1).
@@ -262,8 +270,7 @@ plot_post_prediction_blooms <- function(m, m.name) {
     )
     mtext(sprintf("%s post: shade = %d", m.name, s))
     post <- link(m, data=data.frame(S=s, W=-1:1))
-    mu <- post$mu
-    for (j in 1:20) lines(-1:1, mu[j,], col=col.alpha("black", 0.3))
+    for (j in 1:20) lines(-1:1, post[j,], col=col.alpha("black", 0.3))
   }
 }
 
@@ -289,13 +296,15 @@ Create the comparison plot using `plot(compare(m3.1, m3.2))` and interpret what 
 
 \textit{Score the models.}
 ```{r, echo=FALSE}
-set.seed(42)
+set.seed(rseed)
+# NOTE: In the below chunk the messages are suppressed but there are pareto
+#   k-values over 0.5 AND 1.0 which points to potential outliers
 ```
-```{r}
+```{r, message=FALSE}
 psis.compare <- compare(m3.1, m3.2, func=PSIS)
 ```
 ```{r, echo=FALSE}
-set.seed(42)
+set.seed(rseed)
 ```
 ```{r}
 waic.compare <- compare(m3.1, m3.2, func=WAIC)
@@ -317,7 +326,7 @@ par(mfrow=c(1, 1))
 
 **Hint:** Use `PSIS(model, pointwise=TRUE)` and examine the $k$ values.
 ```{r, echo=FALSE}
-set.seed(42)
+set.seed(rseed)
 ```
 ```{r}
 psis <- PSIS(m3.1, pointwise=TRUE)
