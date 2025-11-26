@@ -363,18 +363,16 @@ abline(v=0.7, col="red", lty=2)
 
 ```
 ```{r, echo=FALSE}
-cat(sprintf("Max Pareto k-value: %0.3f\n", max(psis$k)))
+cat(sprintf("Max Pareto k: %0.3f\n", max(psis$k)))
 over.0.7 <- sum(psis$k > 0.7)
 pct <- (sum(psis$k > 0.7) / length(psis$k)) * 100
-cat(sprintf("Values >0.7: %d (%0.1f%%)", over.0.7, pct))
+cat(sprintf("k > 0.7: %d (%0.1f%%)", over.0.7, pct))
 ```
 \textit{When there are Pareto} $k$ \textit{values above 0.5, the Pareto distribution has infinate variance. Still, we will use a cutoff of 0.7 as theory and simulation suggests values} $k < 0.7$ \textit{are still fine to use. That being said, we observe 3 such values with} $k > 0.7$ \textit{which accounts for 11.1\% of our data. Additionally, one such values is over double the theoretical cutoff. This is very strong evidence towards the presence of outliers.}
 
 **e)** Based on your analysis, write 2-3 sentences answering: Do water and light work independently to affect tulip blooms, or do they interact? What does this mean biologically?
 
-\textit{Given that the model which included the interaction has the highest score in both PSIS and WAIC, it is tempting to assume that}
-
-\textit{As stated above, we observe shifting slopes in \textbf{b)} for} `m3.2` \textit{at varying levels of shade. This would not be able to happen if there was not interaction. Given that} `m3.2` \textit{is also the best performing model, it is tempting to affirm that this implies causation. That is, that water and shade interact to cause blooms. However, we cannot make causal affirmations based on the WAIC and PSIS score. That being said, there is a possible biological explaination for such an interaction to support the causal claim. That being, that tulips need both light and water to produce blooms. This is, of course, obvious. Plants need light and nutrients to grow.}
+\textit{It is very likely that light (shade) and water interact to affect tulip blooms. When varying the levels of shade in} `m3.2` \textit{we observe a better fit than int he model we did not,} `m3.1`. \textit{This interaction can be explained biologically by the fact that plants need light and nutrients to grow. Plants that have more access to light, need more water to support photosynthesis, and vice versa.}
 
 # Reflection
 
