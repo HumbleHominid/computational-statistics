@@ -104,6 +104,11 @@ m6.10 <- quap(
 )
 ```
 
+```{r}
+precis(m6.10)
+```
+
+
 \textit{Score the models.}
 ```{r, echo=FALSE}
 set.seed(rseed)
@@ -320,7 +325,25 @@ plot(psis.compare)
 plot(waic.compare)
 par(mfrow=c(1, 1))
 ```
-\textit{When comparing our two models using PSIS and WAIC we see similar results. With each method,} `m3.1` \textit{is expected to perform better. When comparing the difference, \textbf{dPSIS} and \textbf{dWAIC}, we observe that it is about half of the standard error. Additionally, the \textbf{dSE} for} $m3.2$ \textit{is 0.02. This implies that there is very little difference between these two models from a predictions perspective. According to these comparisons alone, there isn't strong support for including the interaction effect. If there was, we would expect to see} $m3.2$ \textit{outperforming } $m3.1$.
+```{r calc_interval, echo=FALSE}
+# Calculate a confidence interval
+calc.interval <- function(mu, sigma, z=2.575) { # Default of 99% z-score
+  return(mu + c(-1,1) * sigma * z)
+}
+
+```
+```{r, echo=FALSE}
+z <- 1.28 # z-score for 80%
+psis.interval <- calc.interval(psis.compare$dPSIS[2], psis.compare$dSE[2], z)
+waic.interval <- calc.interval(waic.compare$dWAIC[2], waic.compare$dSE[2], z)
+
+cat("80% Confidence Interval\n")
+cat("PSIS: ", psis.interval, "\n")
+cat("WAIC: ", waic.interval)
+```
+
+
+\textit{When comparing our two models using PSIS and WAIC we see similar results. With each method,} `m3.2` \textit{is expected to perform better (lower values). When comparing the difference, \textbf{dPSIS} and \textbf{dWAIC}, we observe that it is about the same size as the standard error \textbf{SE} which tells us that these models are potentially not substantially different. When calculating a generous 80\% confidence interval (see above) we observe that the whole 80\% interval is not above 0 meaning that these two models potentially overlap. This gets more egregious with more standard CI such as 90\%, 95\%, and 99\%. With that in mind, I would not conclude that these two models are significantly different.}
 
 **d)** Examine the pointwise PSIS diagnostics for your preferred model. Are there any problematic observations (high Pareto $k$ values)? If so, which observations are influential and why might they be outliers?
 
@@ -328,21 +351,30 @@ par(mfrow=c(1, 1))
 ```{r, echo=FALSE}
 set.seed(rseed)
 ```
-```{r}
+```{r plot_psis_k, echo=FALSE, message=FALSE}
+# Plot psis k-values
 psis <- PSIS(m3.1, pointwise=TRUE)
 plot(psis$k, psis$penalty,
      xlab="PSIS Pareto k", ylab="PSIS Penalty",
      col=rangi2, lwd=2
 )
+mtext("PSIS k-values")
+abline(v=0.5, col="red", lty=2)
+
 ```
 ```{r, echo=FALSE}
-cat(sprintf("Max Pareto k-value: %0.3f", max(psis$k)))
+cat(sprintf("Max Pareto k-value: %0.3f\n", max(psis$k)))
+over.0.5 <- sum(psis$penalty > 0.5)
+pct <- (sum(psis$penalty > 0.5) / length(psis$penalty)) * 100
+cat(sprintf("Values >0.5: %d (%0.1f%%)", over.0.5, pct))
 ```
-\textit{When there are Pareto} $k$ \textit{values above 0.5, their importance weight can be unreliable. This is an indicator of a potential outlier. The highest Pareto} $k$ \textit{value we observe is 0.294 which is well below the 0.5 warning threshold.}
+\textit{When there are Pareto} $k$ \textit{values above 0.5, their importance weight can be unreliable. This is an indicator of a potential outlier. The highest Pareto} $k$ \textit{value we observe is 0.994 with 6 total observations (22.2\%) being above 0.5. }
 
 **e)** Based on your analysis, write 2-3 sentences answering: Do water and light work independently to affect tulip blooms, or do they interact? What does this mean biologically?
 
-\textit{It is very likely that water and light interact to affect tulip bloom. This is evidenced by the shifing slopes in \textbf{b)} for} $m3.2$ \textit{when holding shade. This would not be able to happen if there was not interaction. A possible biological explaination for such an interaction is that tulips need both light and water to produce blooms. This is, of course, obvious. Plants need light and nutrients to grow.}
+\textit{Given that the model which included the interaction has the highest score in both PSIS and WAIC, it is tempting to assume that}
+
+\textit{As stated above, we observe shifting slopes in \textbf{b)} for} `m3.2` \textit{at varying levels of shade. This would not be able to happen if there was not interaction. Given that} `m3.2` \textit{is also the best performing model, it is tempting to affirm that this implies causation. That is, that water and shade interact to cause blooms. However, we cannot make causal affirmations based on the WAIC and PSIS score. That being said, there is a possible biological explaination for such an interaction to support the causal claim. That being, that tulips need both light and water to produce blooms. This is, of course, obvious. Plants need light and nutrients to grow.}
 
 # Reflection
 
@@ -357,13 +389,13 @@ Write 3-4 sentences explaining: What is the difference between these two types o
 
 # AI Declaration
 
-Please declare your collaborators in the class and how you used AI (if at all) to complete this assignment. If you used AI, include the prompts you used and explain what you learned from its responses that you didn’t understand initially.
+AI was not used for this assignment although, I probably should have because I had a bug in my models where I had `d ~ exp(1)` written instead of `d ~ dexp(1)` so the predictions made no sense and it took me forever to find it.
 
 \newpage
 # Appendix
 
 ```{r, echo=FALSE}
-appendix.labels = c("plot_prior", "plot_post")
+appendix.labels = c("plot_prior", "plot_post", "calc_interval", "plot_psis_k")
 ```
 ```{r, ref.label=appendix.labels, eval=FALSE}
 ```
