@@ -10,10 +10,11 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(rethinking)
+library(dagitty)
 rseed <- 42
 ```
 
-**Collaborators:** \textit{...}
+**Collaborators:** \textit{For this assignment, I collaborated with Florian and discussed our independent solutions.}
 
 # Entropy & Divergence
 
@@ -60,7 +61,7 @@ kl <- sum(p*log(p/q))
 cat("KL divergence: ", kl)
 ```
 
-\textit{We observe a KL divergence of 0.022. We expect this value to be small as $p$ and $q$ are relatively "close" together and the KL divergence is the average difference in log probabilities between the two models. This value would be much larger if instead $q=\{0.9, 0.1\}$.}
+\textit{We observe a KL divergence of 0.022. We expect this value to be small as $p$ and $q$ are relatively "close" together and the KL divergence is the average difference in log probabilities between the two models. This value would be much larger if instead $q=\{0.9, 0.1\}$. Importantly, $D_{KL}(p,q) \neq D_{KL}(q,p)$ in general.}
 
 # Collider Bias and Information Criteria
 
@@ -104,11 +105,6 @@ m6.10 <- quap(
 )
 ```
 
-```{r}
-precis(m6.10)
-```
-
-
 \textit{Score the models.}
 ```{r, echo=FALSE}
 set.seed(rseed)
@@ -150,6 +146,8 @@ Tulips need both water and light to bloom. But do water and light work independe
 ```{r}
 data(tulips)
 d <- tulips
+```
+```{r, echo=FALSE, eval=FALSE}
 str(d)
 ```
 
@@ -171,7 +169,7 @@ d$B <- d$B / max(d$B)
 d$W <- d$water - mean(d$water)
 d$S <- d$shade - mean(d$shade)
 ```
-
+\newpage
 **a)** Fit a model (`m3.1`) that predicts blooms using water and shade as independent predictors (no interaction). That is, assume the effect of water on blooms is the same regardless of shade level, and vice versa.
 
 Use prior predictive simulation to justify your priors. Write 2-3 sentences explaining your choice of priors.
@@ -196,7 +194,7 @@ plot_prior_prediction <- function(x, ylim, xlab, ylab, title="Prior Prediction")
 
 ```
 
-\textit{Since we are scaling and centering our data instead of standardizing it, our priors will not all be mean 0. We will predict our outcome prior will have $\mu = 0.5$ as we scaled our blooms to $[0, 1]$ and the predictor prior will have $\mu = 0$ as we centered that data. For our standard deviations, we will use $\sigma = 0.25$ for our outcome prior. This is because $\pm2\sigma$ would put blooms at impossible values for our small world i.e. $>0$ or $<1$. For the same reasons, we will use $\sigma = 0.25$ for our predictor variables.}
+\textit{Since we are scaling and centering our data instead of standardizing it, our priors will not all be mean 0. We will predict our outcome prior will have $\mu = 0.5$ as we scaled our blooms to $[0, 1]$ and the predictor prior will have $\mu = 0$ as we centered that data. For our standard deviations, we will use $\sigma = 0.25$ for our outcome prior. This is because $\pm2\sigma$ would put blooms at impossible values for our small world i.e. $<0$ or $>1$. This outcome prior is arguably still loose and that is justified by the fact that we have a small dataset $n=27$. For the same reasons, we will use $\sigma = 0.25$ for our predictor variables.}
 
 ```{r}
 N <- 50
@@ -237,8 +235,7 @@ m3.1 <- quap(
 ```{r, echo=FALSE,eval=FALSE}
 precis(m3.1)
 ```
-
-
+\newpage
 **b)** Now fit a model (`m3.2`) that includes an interaction between water and shade. This allows the effect of water on blooms to depend on the level of shade (and vice versa).
 
 **Hint:** In the model formula, you can specify the interaction as $W*S$, which is shorthand for $W + S + W*S$. Or you can write out all three terms explicitly.
@@ -290,7 +287,7 @@ plot_post_prediction_blooms(m3.2, "m3.2")
 ```{r, echo=FALSE}
 par(mfrow=c(1, 1))
 ```
-
+\newpage
 **c)** Use both PSIS and WAIC to compare your two models. Which model is expected to make better predictions? Is the difference substantial?
 
 Create the comparison plot using `plot(compare(m3.1, m3.2))` and interpret what you see. Write 3-4 sentences explaining:
@@ -314,6 +311,7 @@ set.seed(rseed)
 ```{r}
 waic.compare <- compare(m3.1, m3.2, func=WAIC)
 ```
+
 \textit{Chart the models.}
 ```{r, echo=FALSE}
 psis.compare
@@ -343,14 +341,14 @@ cat("WAIC: ", waic.interval)
 ```
 
 \textit{When comparing our two models using PSIS and WAIC we see similar results. With each method,} `m3.2` \textit{is expected to perform better (lower values). When comparing the difference, \textbf{dPSIS} and \textbf{dWAIC}, we observe that it is about the same size as the standard error \textbf{SE} which tells us that these models are potentially not substantially different. When calculating a generous 80\% confidence interval (see above) we observe that the whole 80\% interval is not above 0 meaning that these two models potentially overlap. This gets more egregious with more standard CI such as 90\%, 95\%, and 99\%. With that in mind, I would not conclude that these two models are significantly different.}
-
+\newpage
 **d)** Examine the pointwise PSIS diagnostics for your preferred model. Are there any problematic observations (high Pareto $k$ values)? If so, which observations are influential and why might they be outliers?
 
 **Hint:** Use `PSIS(model, pointwise=TRUE)` and examine the $k$ values.
 ```{r, echo=FALSE}
 set.seed(rseed)
 ```
-```{r plot_psis_k, echo=FALSE, message=FALSE}
+```{r plot_psis_k, echo=FALSE, message=FALSE, fig.width=5, fig.align='center'}
 # Plot psis k-values
 psis <- PSIS(m3.2, pointwise=TRUE)
 waic <- WAIC(m3.2, pointwise=TRUE)
@@ -368,12 +366,13 @@ over.0.7 <- sum(psis$k > 0.7)
 pct <- (sum(psis$k > 0.7) / length(psis$k)) * 100
 cat(sprintf("k > 0.7: %d (%0.1f%%)", over.0.7, pct))
 ```
-\textit{When there are Pareto} $k$ \textit{values above 0.5, the Pareto distribution has infinate variance. Still, we will use a cutoff of 0.7 as theory and simulation suggests values} $k < 0.7$ \textit{are still fine to use. That being said, we observe 3 such values with} $k > 0.7$ \textit{which accounts for 11.1\% of our data. Additionally, one such values is over double the theoretical cutoff. This is very strong evidence towards the presence of outliers.}
+\textit{When there are Pareto} $k$ \textit{values above 0.5, the Pareto distribution has infinate variance. Still, we will use a cutoff of 0.7 as theory and simulation suggests values} $k < 0.7$ \textit{are still fine to use. That being said, we observe 3 such values with} $k > 0.7$ \textit{which accounts for 11.1\% of our data. Additionally, one such values is nearly double the theoretical cutoff where the variance becomes infinate (0.5). This is very strong evidence towards the presence of outliers. Possible explainations for such outliers are plants that failed to produce blooms despite getting adequate sun and water.}
 
 **e)** Based on your analysis, write 2-3 sentences answering: Do water and light work independently to affect tulip blooms, or do they interact? What does this mean biologically?
 
-\textit{It is very likely that light (shade) and water interact to affect tulip blooms. When varying the levels of shade in} `m3.2` \textit{we observe a better fit than int he model we did not,} `m3.1`. \textit{This interaction can be explained biologically by the fact that plants need light and nutrients to grow. Plants that have more access to light, need more water to support photosynthesis, and vice versa.}
+\textit{It is very likely that light (shade) and water interact to affect tulip blooms. When varying the levels of shade in} `m3.2` \textit{we observe a better fit than in the model we did not,} `m3.1`. \textit{This interaction can be explained biologically by the fact that plants need light and nutrients to grow i.e. plants that have more access to light, need more water to support photosynthesis, and vice versa.}
 
+\newpage
 # Reflection
 
 Look back at Problems 2 and 3. Both involve interactions, but of different kinds:
@@ -383,17 +382,42 @@ Look back at Problems 2 and 3. Both involve interactions, but of different kinds
 
 Write 3-4 sentences explaining: What is the difference between these two types of “interactions”? How are they similar and how are they different from a causal modeling perspective?
 
-\textit{}
+\textit{These two interactions are both a result of a collider, however the statistical relationships are different. In problem 2, the outcome has a positive relationship with both predictor variables. However, in problem 3, the outome has a positive relationship with one predictor varible, and a negative reliationship with another. Additionally, the impact of one predictor influences the affect of another resulting in a multiplicative interaction. Pictured below is a graphical representation of what I believe the causal models to look like.}
+\vspace{0.25cm}
+```{r, echo=FALSE}
+par(mfrow=c(1, 2))
+```
+```{r dags, echo=FALSE, fig.align='center', fig.show='hold', out.width='.49\\linewidth', out.extra='trim=-0.5cm 0pt -0.5cm 0pt'}
+# Plot the supposed DAGs for problems 2 and 3
+p2.dag <- dagitty("dag {
+  A -> M
+  H -> M
+}")
+coordinates(p2.dag) <- list(x=c(A=-0.5, H=0.5, M=0), y=c(A=0, H=0, M=0.5))
+drawdag(p2.dag, xlim=c(-1, 1), ylim=c(-1, 1))
+p3.dag <- dagitty("dag {
+  S -> B
+  W -> B
+  S -> U [unobserved]
+  W -> U
+  U -> B
+}")
+coordinates(p3.dag) <- list(x=c(S=-0.5, W=0.5, U=0, B=0), y=c(S=0, W=0, U=0.25, B=0.5))
+drawdag(p3.dag, xlim=c(-1, 1), ylim=c(-1, 1), shapes=c(U="c"))
+```
+```{r, echo=FALSE}
+par(mfrow=c(1,1 ))
+```
 
 # AI Declaration
 
-AI was not used for this assignment although, I probably should have because I had a bug in my models where I had `d ~ exp(1)` written instead of `d ~ dexp(1)` so the predictions made no sense and it took me forever to find it.
+AI was not used for this assignment although, I probably should have because I had a bug in my models where I had `sigma ~ exp(1)` written instead of `sigma ~ dexp(1)` so the predictions made no sense and it took me forever to find it.
 
 \newpage
 # Appendix
 
 ```{r, echo=FALSE}
-appendix.labels = c("plot_prior", "plot_post", "calc_interval", "plot_psis_k")
+appendix.labels = c("plot_prior", "plot_post", "calc_interval", "plot_psis_k", "dags")
 ```
 ```{r, ref.label=appendix.labels, eval=FALSE}
 ```
